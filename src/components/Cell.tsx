@@ -12,69 +12,86 @@ interface CellProps {
   onPress: () => void;
 }
 
+/** A chunky, rounded-stroke X built from two crossed bars, matching the
+ * reference game's thick icon-style cross rather than a thin text glyph. */
+function XMark({ size }: { size: number }) {
+  const barLength = size * 0.62;
+  const barThickness = Math.max(4, size * 0.17);
+  const barStyle = {
+    position: 'absolute' as const,
+    width: barLength,
+    height: barThickness,
+    borderRadius: barThickness / 2,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+  };
+  return (
+    <View style={styles.markWrap} pointerEvents="none">
+      <View style={[barStyle, { transform: [{ rotate: '45deg' }] }]} />
+      <View style={[barStyle, { transform: [{ rotate: '-45deg' }] }]} />
+    </View>
+  );
+}
+
 export function Cell({ state, regionId, conflict, hinted, size, onPress }: CellProps) {
   const bg = regionColor(regionId);
+  const gap = Math.max(1.5, size * 0.035);
+  const radius = size * 0.22;
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.cell,
-        {
-          width: size,
-          height: size,
-          backgroundColor: bg,
-          opacity: pressed ? 0.8 : 1,
-        },
-        conflict && styles.conflict,
-        hinted && styles.hinted,
+        styles.hitArea,
+        { width: size, height: size, padding: gap, opacity: pressed ? 0.85 : 1 },
       ]}
       accessibilityRole="button"
       accessibilityLabel={
         state === 'cat' ? 'Chat' : state === 'x' ? 'Case exclue' : 'Case vide'
       }
     >
-      {state === 'cat' && (
-        <View style={[styles.catBadge, conflict && styles.catBadgeConflict]}>
-          <Text style={styles.catEmoji}>🐱</Text>
-        </View>
-      )}
-      {state === 'x' && <Text style={styles.xMark}>✕</Text>}
+      <View
+        style={[
+          styles.inner,
+          { backgroundColor: bg, borderRadius: radius },
+          conflict && styles.conflict,
+          hinted && styles.hinted,
+        ]}
+      >
+        {state === 'cat' && (
+          <Text style={[styles.catEmoji, { fontSize: size * 0.58 }]}>🐱</Text>
+        )}
+        {state === 'x' && <XMark size={size} />}
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  cell: {
+  hitArea: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.55)',
+  },
+  inner: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   conflict: {
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: colors.danger,
   },
   hinted: {
     borderWidth: 3,
     borderColor: colors.accentDark,
   },
-  xMark: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  catBadge: {
-    width: '78%',
-    height: '78%',
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+  markWrap: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  catBadgeConflict: {
-    backgroundColor: 'rgba(224,85,79,0.45)',
-  },
   catEmoji: {
-    fontSize: 20,
+    textAlign: 'center',
   },
 });
