@@ -12,6 +12,7 @@ import { generatePuzzle } from '../engine/generator';
 import { findConflicts, isSolved } from '../engine/solver';
 import type { CellState, Puzzle } from '../engine/types';
 import { levelToSize, scoreForCompletion } from '../utils/levelConfig';
+import { playSound } from '../utils/sounds';
 import { useGameStore } from '../state/store';
 import { colors } from '../theme/colors';
 
@@ -40,6 +41,7 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
   const buyHint = useGameStore((s) => s.buyHint);
   const buyAutoCat = useGameStore((s) => s.buyAutoCat);
   const hapticsEnabled = useGameStore((s) => s.hapticsEnabled);
+  const soundEnabled = useGameStore((s) => s.soundEnabled);
 
   // The puzzle on screen tracks its own level rather than the store's
   // (which advances the instant a level is completed): otherwise the win
@@ -62,6 +64,10 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
 
   const lastTapRef = useRef<{ row: number; col: number; time: number } | null>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  function playIfEnabled(key: Parameters<typeof playSound>[0]) {
+    if (soundEnabled) playSound(key);
+  }
 
   /** A quick horizontal wobble plus a haptic buzz — the physical "no"
    * feedback for a wrong guess, on top of the red locked cross itself. */
@@ -120,6 +126,7 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
       completeLevel({ scoreEarned, fishEarned: FISH_REWARD });
       setLastReward({ score: scoreEarned, fish: FISH_REWARD });
       setWon(true);
+      playIfEnabled('win');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cats, puzzle, lost]);
@@ -155,14 +162,19 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
 
     if (col === puzzle.solution[row]) {
       setCell(row, col, 'cat');
+      playIfEnabled('correct');
       return;
     }
 
     setCell(row, col, 'wrong');
     triggerWrongFeedback();
+    playIfEnabled('wrong');
     setLives((n) => {
       const next = n - 1;
-      if (next <= 0) setLost(true);
+      if (next <= 0) {
+        setLost(true);
+        playIfEnabled('lose');
+      }
       return next;
     });
   }

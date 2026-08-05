@@ -80,6 +80,13 @@ progression (niveaux, score, série quotidienne, monnaie).
   (haptique, désactivable dans les réglages) et une légère secousse de
   l'écran. À 0 vie, le niveau est raté et propose de réessayer (nouvelle
   grille de la même taille) ou de retourner à l'accueil.
+- **Bruitages** (désactivables via "Sons" dans les réglages) : un bref
+  carillon montant quand un chat est correctement placé, un double bip
+  grave quand un double-tap est faux, un arpège joyeux à la victoire du
+  niveau, une petite descente triste à 0 vie. Les 4 sons sont synthétisés
+  directement en PCM par `scripts/generate-sounds.mjs` (voir §3) plutôt
+  que des fichiers audio tiers, pour ne rien dépendre d'assets sous
+  licence.
 - Les power-ups (🐱 auto-placement, 💡 indice) restent des raccourcis
   payants (poissons 🐟 de la monnaie du joueur) qui ne coûtent jamais de
   vie.
@@ -117,13 +124,17 @@ src/
     colors.ts           Palette de couleurs (fond, encre, accent, régions)
   utils/
     levelConfig.ts       Taille de grille par niveau, calcul du score
+    sounds.ts             Lecture des bruitages (expo-audio)
   components/         Composants UI réutilisables (Cell, Board, TopBar, RuleCard,
-                        ProgressBadges, PowerButton, WinModal, ProfileModal,
-                        StreakModal, SettingsModal)
+                        ProgressBadges, PowerButton, WinModal, LoseModal,
+                        ProfileModal, StreakModal, SettingsModal)
   screens/
     HomeScreen.tsx
     GameScreen.tsx
 App.tsx              Point d'entrée, bascule Accueil ↔ Partie
+assets/sounds/       Bruitages .wav générés (voir scripts/generate-sounds.mjs)
+scripts/
+  generate-sounds.mjs  Synthétise les 4 bruitages en PCM, aucun asset tiers
 ```
 
 ### Génération de puzzle (`src/engine/generator.ts`)
