@@ -35,9 +35,13 @@ progression (niveaux, score, série quotidienne, monnaie).
 - **Trois règles simples, apprises en 10 secondes**, mais dont la
   combinaison crée une vraie profondeur de déduction logique — la même
   formule qui a rendu Queens viral.
-- **Feedback immédiat** : l'interaction "case vide → ✕ → 🐱" laisse le
-  joueur noter ses déductions (exclure des cases) avant de s'engager sur un
-  placement, ce qui réduit la charge cognitive.
+- **Feedback immédiat, avec un vrai enjeu** : un tap simple ne fait que
+  noter/effacer une exclusion (✕), sans risque — c'est l'espace pour
+  déduire. Un double-tap engage réellement un chat sur la case : correct,
+  il se pose ; incorrect, la case est marquée ✕ (on sait maintenant que ce
+  n'est pas là) et coûte une vie 🐟 parmi les 3 disponibles par niveau. Ce
+  découplage "noter sans risque / valider avec risque" est ce qui rend la
+  logique déductive gratifiante plutôt que punitive.
 - **Difficulté progressive lisible** : la grille grandit avec le niveau
   (4×4 → 16×16 dans cette recréation, chaque palier de taille durant un
   niveau de plus que le précédent), donnant une sensation de progression
@@ -58,9 +62,25 @@ progression (niveaux, score, série quotidienne, monnaie).
 | Écran | Éléments identifiés |
 |---|---|
 | **Accueil** | Logo "MEOWDOKU", bouton avatar (haut gauche), bouton réglages (haut droit), carte "Défi quotidien" (verrouillée jusqu'au niveau 21), carte "Série" (streak), bouton "Niveau N" |
-| **Partie** | Barre du haut (retour / Niveau / Score / réglages), badge de progression 🐱 x/N, badge poissons 🐟, 3 cartes de règles, grille de jeu, deux boutons de power-up (🐱 auto-placement, 💡 indice) avec compteur de charges |
+| **Partie** | Barre du haut (retour / Niveau / Score / réglages), badge de progression 🐱 x/N, badge vies 🐟 (3 par niveau), 3 cartes de règles, grille de jeu, deux boutons de power-up (🐱 auto-placement, 💡 indice) avec compteur de charges |
 | **Profil** | Avatar + identifiant joueur, onglets Avatar/Cadre, grille de sélection, bouton Confirmer |
 | **Série quotidienne** | Soleil à toucher, compteur de jours, message de confirmation |
+
+### Interaction sur la grille
+
+- **Tap simple** : bascule la case entre vide et exclue (✕). Purement une
+  note pour le joueur, sans conséquence — c'est là qu'on pose ses
+  déductions avant de s'engager.
+- **Double-tap** : engage un chat sur la case. S'il y a effectivement un
+  chat à cet endroit dans la solution, il se pose (🐱). Sinon, la case
+  passe à ✕ (puisqu'on sait désormais qu'elle est exclue) et le joueur
+  perd une vie parmi les 3 disponibles pour ce niveau (affichées en 🐟 en
+  haut de l'écran). À 0 vie, le niveau est raté et propose de
+  réessayer (nouvelle grille de la même taille) ou de retourner à
+  l'accueil.
+- Les power-ups (🐱 auto-placement, 💡 indice) restent des raccourcis
+  payants (poissons 🐟 de la monnaie du joueur) qui ne coûtent jamais de
+  vie.
 
 ## 2. Choix techniques
 

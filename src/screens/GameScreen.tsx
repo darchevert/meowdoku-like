@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Board } from '../components/Board';
 import { TopBar } from '../components/TopBar';
@@ -6,6 +6,7 @@ import { RuleCards } from '../components/RuleCard';
 import { ProgressBadges } from '../components/ProgressBadges';
 import { PowerButton } from '../components/PowerButton';
 import { WinModal } from '../components/WinModal';
+import { LoseModal } from '../components/LoseModal';
 import { generatePuzzle } from '../engine/generator';
 import { findConflicts, isSolved } from '../engine/solver';
 import type { CellState, Puzzle } from '../engine/types';
@@ -15,15 +16,11 @@ import { colors } from '../theme/colors';
 
 const FISH_REWARD = 3;
 const HINT_HIGHLIGHT_MS = 2500;
+const MAX_LIVES = 3;
+const DOUBLE_TAP_MS = 300;
 
 function emptyGrid(size: number): CellState[][] {
   return Array.from({ length: size }, () => new Array<CellState>(size).fill('empty'));
-}
-
-function nextCellState(state: CellState): CellState {
-  if (state === 'empty') return 'x';
-  if (state === 'x') return 'cat';
-  return 'empty';
 }
 
 interface GameScreenProps {
@@ -36,7 +33,6 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
   const score = useGameStore((s) => s.score);
   const hints = useGameStore((s) => s.hints);
   const autoCats = useGameStore((s) => s.autoCats);
-  const fish = useGameStore((s) => s.fish);
   const completeLevel = useGameStore((s) => s.completeLevel);
   const useHintCharge = useGameStore((s) => s.useHint);
   const useAutoCatCharge = useGameStore((s) => s.useAutoCat);
@@ -48,22 +44,31 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
   // modal would find its level already stale and a fresh board already
   // generated underneath it before the player ever sees "Niveau suivant".
   const [activeLevel, setActiveLevel] = useState(level);
+  // Bumped on retry so a fresh puzzle regenerates for the *same* level.
+  const [attempt, setAttempt] = useState(0);
   const size = levelToSize(activeLevel);
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [grid, setGrid] = useState<CellState[][]>([]);
   const [loading, setLoading] = useState(true);
   const [hintCell, setHintCell] = useState<{ row: number; col: number } | null>(null);
   const [won, setWon] = useState(false);
+  const [lives, setLives] = useState(MAX_LIVES);
+  const [lost, setLost] = useState(false);
   const [lastReward, setLastReward] = useState({ score: 0, fish: 0 });
   const [hintsUsed, setHintsUsed] = useState(0);
   const [autoCatsUsed, setAutoCatsUsed] = useState(0);
 
+  const lastTapRef = useRef<{ row: number; col: number; time: number } | null>(null);
+
   useEffect(() => {
     setLoading(true);
     setWon(false);
+    setLost(false);
+    setLives(MAX_LIVES);
     setHintCell(null);
     setHintsUsed(0);
     setAutoCatsUsed(0);
+    lastTapRef.current = null;
     const timer = setTimeout(() => {
       const p = generatePuzzle(size);
       setPuzzle(p);
@@ -72,7 +77,7 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
     }, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeLevel]);
+  }, [activeLevel, attempt]);
 
   const cats = useMemo(() => {
     const list: Array<{ row: number; col: number }> = [];
@@ -91,7 +96,7 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
   }, [puzzle, cats]);
 
   useEffect(() => {
-    if (!puzzle || won) return;
+    if (!puzzle || won || lost) return;
     if (isSolved(puzzle.size, puzzle.regions, cats)) {
       const scoreEarned = scoreForCompletion(puzzle.size, hintsUsed, autoCatsUsed);
       completeLevel({ scoreEarned, fishEarned: FISH_REWARD });
@@ -99,16 +104,64 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
       setWon(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cats, puzzle]);
+  }, [cats, puzzle, lost]);
 
-  function handleCellPress(row: number, col: number) {
-    if (won) return;
-    setHintCell(null);
+  function setCell(row: number, col: number, state: CellState) {
     setGrid((prev) => {
       const next = prev.map((r) => r.slice());
-      next[row][col] = nextCellState(next[row][col]);
+      next[row][col] = state;
       return next;
     });
+  }
+
+  /** A single tap only ever notes/clears an exclusion mark — placing a
+   * cat is a deliberate, riskier action (see handleDoubleTap). */
+  function handleSingleTap(row: number, col: number) {
+    setGrid((prev) => {
+      const current = prev[row][col];
+      if (current === 'cat') return prev;
+      const next = prev.map((r) => r.slice());
+      next[row][col] = current === 'empty' ? 'x' : 'empty';
+      return next;
+    });
+  }
+
+  /** Double-tapping a cell commits to placing a cat there. If it's
+   * actually correct the cat is placed; if not, the guess costs a life
+   * and the cell is marked as excluded (now that it's known-wrong). */
+  function handleDoubleTap(row: number, col: number) {
+    if (!puzzle) return;
+    if (grid[row][col] === 'cat') return;
+
+    if (col === puzzle.solution[row]) {
+      setCell(row, col, 'cat');
+      return;
+    }
+
+    setCell(row, col, 'x');
+    setLives((n) => {
+      const next = n - 1;
+      if (next <= 0) setLost(true);
+      return next;
+    });
+  }
+
+  function handleCellPress(row: number, col: number) {
+    if (won || lost) return;
+    setHintCell(null);
+
+    const now = Date.now();
+    const last = lastTapRef.current;
+    const isDoubleTap =
+      !!last && last.row === row && last.col === col && now - last.time < DOUBLE_TAP_MS;
+
+    if (isDoubleTap) {
+      lastTapRef.current = null;
+      handleDoubleTap(row, col);
+    } else {
+      lastTapRef.current = { row, col, time: now };
+      handleSingleTap(row, col);
+    }
   }
 
   function firstUnsolvedRow(): number | null {
@@ -120,7 +173,7 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
   }
 
   function handleHint() {
-    if (!puzzle || won) return;
+    if (!puzzle || won || lost) return;
     const row = firstUnsolvedRow();
     if (row === null) return;
     if (!useHintCharge() && !buyHint()) {
@@ -133,7 +186,7 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
   }
 
   function handleAutoCat() {
-    if (!puzzle || won) return;
+    if (!puzzle || won || lost) return;
     const row = firstUnsolvedRow();
     if (row === null) return;
     if (!useAutoCatCharge() && !buyAutoCat()) {
@@ -141,12 +194,7 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
       return;
     }
     setAutoCatsUsed((n) => n + 1);
-    const col = puzzle.solution[row];
-    setGrid((prev) => {
-      const next = prev.map((r) => r.slice());
-      next[row][col] = 'cat';
-      return next;
-    });
+    setCell(row, puzzle.solution[row], 'cat');
   }
 
   return (
@@ -154,7 +202,12 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
       <ScrollView contentContainerStyle={styles.content}>
         <TopBar level={activeLevel} score={score} onBack={onBack} onSettings={onSettings} />
 
-        <ProgressBadges catsPlaced={cats.length} catsTotal={size} fishReward={FISH_REWARD} />
+        <ProgressBadges
+          catsPlaced={cats.length}
+          catsTotal={size}
+          lives={lives}
+          maxLives={MAX_LIVES}
+        />
 
         <RuleCards />
 
@@ -187,6 +240,16 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
         onNext={() => {
           setWon(false);
           setActiveLevel((l) => l + 1);
+        }}
+        onHome={onBack}
+      />
+
+      <LoseModal
+        visible={lost}
+        level={activeLevel}
+        onRetry={() => {
+          setLost(false);
+          setAttempt((a) => a + 1);
         }}
         onHome={onBack}
       />

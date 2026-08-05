@@ -5,10 +5,11 @@ import { colors } from '../theme/colors';
 interface ProgressBadgesProps {
   catsPlaced: number;
   catsTotal: number;
-  fishReward: number;
+  lives: number;
+  maxLives: number;
 }
 
-export function ProgressBadges({ catsPlaced, catsTotal, fishReward }: ProgressBadgesProps) {
+export function ProgressBadges({ catsPlaced, catsTotal, lives, maxLives }: ProgressBadgesProps) {
   return (
     <View style={styles.row}>
       <View style={styles.pill}>
@@ -18,8 +19,8 @@ export function ProgressBadges({ catsPlaced, catsTotal, fishReward }: ProgressBa
         </Text>
       </View>
       <View style={styles.pill}>
-        {Array.from({ length: fishReward }).map((_, i) => (
-          <Text key={i} style={styles.fish}>
+        {Array.from({ length: maxLives }).map((_, i) => (
+          <Text key={i} style={[styles.fish, i >= lives && styles.fishLost]}>
             🐟
           </Text>
         ))}
@@ -48,6 +49,9 @@ const styles = StyleSheet.create({
   },
   fish: {
     fontSize: 16,
+  },
+  fishLost: {
+    opacity: 0.2,
   },
   count: {
     fontSize: 16,
