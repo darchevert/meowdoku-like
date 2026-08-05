@@ -115,11 +115,12 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
   }
 
   /** A single tap only ever notes/clears an exclusion mark — placing a
-   * cat is a deliberate, riskier action (see handleDoubleTap). */
+   * cat is a deliberate, riskier action (see handleDoubleTap). Cells
+   * already locked in as a wrong guess never change again. */
   function handleSingleTap(row: number, col: number) {
     setGrid((prev) => {
       const current = prev[row][col];
-      if (current === 'cat') return prev;
+      if (current === 'cat' || current === 'wrong') return prev;
       const next = prev.map((r) => r.slice());
       next[row][col] = current === 'empty' ? 'x' : 'empty';
       return next;
@@ -128,17 +129,18 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
 
   /** Double-tapping a cell commits to placing a cat there. If it's
    * actually correct the cat is placed; if not, the guess costs a life
-   * and the cell is marked as excluded (now that it's known-wrong). */
+   * and the cell is permanently marked "wrong" (red, locked) — a cell
+   * already marked that way can't be re-guessed or lose another life. */
   function handleDoubleTap(row: number, col: number) {
     if (!puzzle) return;
-    if (grid[row][col] === 'cat') return;
+    if (grid[row][col] === 'cat' || grid[row][col] === 'wrong') return;
 
     if (col === puzzle.solution[row]) {
       setCell(row, col, 'cat');
       return;
     }
 
-    setCell(row, col, 'x');
+    setCell(row, col, 'wrong');
     setLives((n) => {
       const next = n - 1;
       if (next <= 0) setLost(true);

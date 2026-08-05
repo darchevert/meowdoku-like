@@ -1,4 +1,8 @@
-export type CellState = 'empty' | 'x' | 'cat';
+/** 'wrong' is a locked-in mistake: a losing double-tap guess. It behaves
+ * like 'x' for puzzle logic (excluded, not a cat) but is rendered as a
+ * red cross and can never be changed back — a permanent record of the
+ * life it cost. */
+export type CellState = 'empty' | 'x' | 'wrong' | 'cat';
 
 /** A generated puzzle: an NxN board partitioned into N connected color
  * regions, with exactly one valid "cat" placement per row/column/region

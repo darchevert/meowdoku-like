@@ -14,7 +14,7 @@ interface CellProps {
 
 /** A chunky, rounded-stroke X built from two crossed bars, matching the
  * reference game's thick icon-style cross rather than a thin text glyph. */
-function XMark({ size }: { size: number }) {
+function XMark({ size, color }: { size: number; color: string }) {
   const barLength = size * 0.62;
   const barThickness = Math.max(4, size * 0.17);
   const barStyle = {
@@ -22,7 +22,7 @@ function XMark({ size }: { size: number }) {
     width: barLength,
     height: barThickness,
     borderRadius: barThickness / 2,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: color,
   };
   return (
     <View style={styles.markWrap} pointerEvents="none">
@@ -36,17 +36,25 @@ export function Cell({ state, regionId, conflict, hinted, size, onPress }: CellP
   const bg = regionColor(regionId);
   const gap = Math.max(1.5, size * 0.035);
   const radius = size * 0.22;
+  const isWrong = state === 'wrong';
 
   return (
     <Pressable
       onPress={onPress}
+      disabled={isWrong}
       style={({ pressed }) => [
         styles.hitArea,
         { width: size, height: size, padding: gap, opacity: pressed ? 0.85 : 1 },
       ]}
       accessibilityRole="button"
       accessibilityLabel={
-        state === 'cat' ? 'Chat' : state === 'x' ? 'Case exclue' : 'Case vide'
+        state === 'cat'
+          ? 'Chat'
+          : state === 'wrong'
+          ? 'Erreur, case définitivement exclue'
+          : state === 'x'
+          ? 'Case exclue'
+          : 'Case vide'
       }
     >
       <View
@@ -55,12 +63,14 @@ export function Cell({ state, regionId, conflict, hinted, size, onPress }: CellP
           { backgroundColor: bg, borderRadius: radius },
           conflict && styles.conflict,
           hinted && styles.hinted,
+          isWrong && styles.wrong,
         ]}
       >
         {state === 'cat' && (
           <Text style={[styles.catEmoji, { fontSize: size * 0.58 }]}>🐱</Text>
         )}
-        {state === 'x' && <XMark size={size} />}
+        {state === 'x' && <XMark size={size} color="rgba(255,255,255,0.92)" />}
+        {isWrong && <XMark size={size} color={colors.danger} />}
       </View>
     </Pressable>
   );
@@ -84,6 +94,10 @@ const styles = StyleSheet.create({
   hinted: {
     borderWidth: 3,
     borderColor: colors.accentDark,
+  },
+  wrong: {
+    borderWidth: 3,
+    borderColor: colors.danger,
   },
   markWrap: {
     width: '100%',
