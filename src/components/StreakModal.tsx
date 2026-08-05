@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 import { useGameStore } from '../state/store';
+import { PressableScale } from './PressableScale';
 
 interface StreakModalProps {
   visible: boolean;
@@ -38,9 +39,9 @@ export function StreakModal({ visible, onClose }: StreakModalProps) {
           <Text style={styles.dayNumber}>{streak + (claimed ? 0 : 1)}</Text>
         </View>
 
-        <Pressable style={styles.sunWrap} onPress={handleTapSun}>
+        <PressableScale style={styles.sunWrap} scaleTo={0.88} onPress={handleTapSun}>
           <Text style={styles.sun}>☀️</Text>
-        </Pressable>
+        </PressableScale>
 
         <Text style={styles.caption}>
           {claimed
@@ -51,9 +52,9 @@ export function StreakModal({ visible, onClose }: StreakModalProps) {
         </Text>
 
         {claimed && (
-          <Pressable style={styles.doneButton} onPress={onClose}>
+          <PressableScale style={styles.doneButton} onPress={onClose}>
             <Text style={styles.doneButtonText}>Continuer</Text>
-          </Pressable>
+          </PressableScale>
         )}
       </Pressable>
     </Modal>

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
+import { PressableScale } from './PressableScale';
 
 interface WinModalProps {
   visible: boolean;
@@ -29,12 +30,12 @@ export function WinModal({
             <Text style={styles.reward}>+{scoreEarned} points</Text>
             <Text style={styles.reward}>+{fishEarned} 🐟</Text>
           </View>
-          <Pressable style={styles.primaryButton} onPress={onNext}>
+          <PressableScale style={styles.primaryButton} onPress={onNext}>
             <Text style={styles.primaryButtonText}>Niveau suivant</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={onHome}>
+          </PressableScale>
+          <PressableScale style={styles.secondaryButton} onPress={onHome}>
             <Text style={styles.secondaryButtonText}>Accueil</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
     </Modal>

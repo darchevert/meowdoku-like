@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
+import { PressableScale } from './PressableScale';
 
 interface TopBarProps {
   level: number;
@@ -33,9 +34,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function RoundButton({ icon, onPress }: { icon: string; onPress: () => void }) {
   return (
-    <Pressable style={styles.round} onPress={onPress} accessibilityRole="button">
+    <PressableScale style={styles.round} onPress={onPress} accessibilityRole="button">
       <Text style={styles.roundIcon}>{icon}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

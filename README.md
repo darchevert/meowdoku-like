@@ -87,6 +87,17 @@ progression (niveaux, score, série quotidienne, monnaie).
   directement en PCM par `scripts/generate-sounds.mjs` (voir §3) plutôt
   que des fichiers audio tiers, pour ne rien dépendre d'assets sous
   licence.
+- **Célébration** : un chat correctement deviné (par double-tap, pas par
+  le raccourci 🐱 payant) fait apparaître brièvement "👏 Excellent ! 👏" (ou
+  Génial/Incroyable/Bravo/Parfait/Superbe, choisi au hasard) juste
+  au-dessus de la grille.
+- **Révélation du niveau** : à l'arrivée sur un niveau (ou au
+  "Réessayer"), les cases apparaissent en vague décalée plutôt que
+  d'un coup, pour marquer visuellement le début d'une nouvelle grille.
+- **Boutons** : tous les boutons de l'app (accueil, barre du jeu,
+  modales) rétrécissent légèrement au toucher et rebondissent au
+  relâchement (`PressableScale`), au lieu du simple changement d'opacité
+  par défaut.
 - Les power-ups (🐱 auto-placement, 💡 indice) restent des raccourcis
   payants (poissons 🐟 de la monnaie du joueur) qui ne coûtent jamais de
   vie.
@@ -127,7 +138,8 @@ src/
     sounds.ts             Lecture des bruitages (expo-audio)
   components/         Composants UI réutilisables (Cell, Board, TopBar, RuleCard,
                         ProgressBadges, PowerButton, WinModal, LoseModal,
-                        ProfileModal, StreakModal, SettingsModal)
+                        ProfileModal, StreakModal, SettingsModal, Celebration,
+                        PressableScale)
   screens/
     HomeScreen.tsx
     GameScreen.tsx

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
+import { PressableScale } from './PressableScale';
 
 interface LoseModalProps {
   visible: boolean;
@@ -17,12 +18,12 @@ export function LoseModal({ visible, level, onRetry, onHome }: LoseModalProps) {
           <Text style={styles.title}>Niveau {level} raté</Text>
           <Text style={styles.emoji}>🐱💔</Text>
           <Text style={styles.subtitle}>Plus de vies pour ce niveau</Text>
-          <Pressable style={styles.primaryButton} onPress={onRetry}>
+          <PressableScale style={styles.primaryButton} onPress={onRetry}>
             <Text style={styles.primaryButtonText}>Réessayer</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={onHome}>
+          </PressableScale>
+          <PressableScale style={styles.secondaryButton} onPress={onHome}>
             <Text style={styles.secondaryButtonText}>Accueil</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
     </Modal>

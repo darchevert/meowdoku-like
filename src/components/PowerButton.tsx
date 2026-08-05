@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
+import { PressableScale } from './PressableScale';
 
 interface PowerButtonProps {
   emoji: string;
@@ -10,12 +11,12 @@ interface PowerButtonProps {
 
 export function PowerButton({ emoji, count, onPress }: PowerButtonProps) {
   return (
-    <Pressable style={styles.button} onPress={onPress} accessibilityRole="button">
+    <PressableScale style={styles.button} onPress={onPress} accessibilityRole="button">
       <Text style={styles.emoji}>{emoji}</Text>
       <View style={styles.badge}>
         <Text style={styles.badgeText}>{count}</Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

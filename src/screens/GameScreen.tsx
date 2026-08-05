@@ -8,6 +8,7 @@ import { ProgressBadges } from '../components/ProgressBadges';
 import { PowerButton } from '../components/PowerButton';
 import { WinModal } from '../components/WinModal';
 import { LoseModal } from '../components/LoseModal';
+import { Celebration, type CelebrationTrigger } from '../components/Celebration';
 import { generatePuzzle } from '../engine/generator';
 import { findConflicts, isSolved } from '../engine/solver';
 import type { CellState, Puzzle } from '../engine/types';
@@ -20,6 +21,7 @@ const FISH_REWARD = 3;
 const HINT_HIGHLIGHT_MS = 2500;
 const MAX_LIVES = 3;
 const DOUBLE_TAP_MS = 300;
+const CELEBRATION_WORDS = ['Excellent !', 'Génial !', 'Incroyable !', 'Bravo !', 'Parfait !', 'Superbe !'];
 
 function emptyGrid(size: number): CellState[][] {
   return Array.from({ length: size }, () => new Array<CellState>(size).fill('empty'));
@@ -64,9 +66,17 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
 
   const lastTapRef = useRef<{ row: number; col: number; time: number } | null>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const celebrationIdRef = useRef(0);
+  const [celebration, setCelebration] = useState<CelebrationTrigger | null>(null);
 
   function playIfEnabled(key: Parameters<typeof playSound>[0]) {
     if (soundEnabled) playSound(key);
+  }
+
+  function triggerCelebration() {
+    celebrationIdRef.current += 1;
+    const word = CELEBRATION_WORDS[Math.floor(Math.random() * CELEBRATION_WORDS.length)];
+    setCelebration({ id: celebrationIdRef.current, word });
   }
 
   /** A quick horizontal wobble plus a haptic buzz — the physical "no"
@@ -163,6 +173,7 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
     if (col === puzzle.solution[row]) {
       setCell(row, col, 'cat');
       playIfEnabled('correct');
+      triggerCelebration();
       return;
     }
 
@@ -250,20 +261,24 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
 
           <RuleCards />
 
-          {loading || !puzzle ? (
-            <View style={styles.loading}>
-              <ActivityIndicator size="large" color={colors.accent} />
-            </View>
-          ) : (
-            <Board
-              size={puzzle.size}
-              regions={puzzle.regions}
-              grid={grid}
-              conflictKeys={conflictKeys}
-              hintCell={hintCell}
-              onCellPress={handleCellPress}
-            />
-          )}
+          <View style={styles.boardArea}>
+            <Celebration trigger={celebration} />
+            {loading || !puzzle ? (
+              <View style={styles.loading}>
+                <ActivityIndicator size="large" color={colors.accent} />
+              </View>
+            ) : (
+              <Board
+                size={puzzle.size}
+                regions={puzzle.regions}
+                grid={grid}
+                conflictKeys={conflictKeys}
+                hintCell={hintCell}
+                onCellPress={handleCellPress}
+                revealKey={`${activeLevel}-${attempt}`}
+              />
+            )}
+          </View>
 
           <View style={styles.powerRow}>
             <PowerButton emoji="🐱" count={autoCats} onPress={handleAutoCat} />
@@ -309,6 +324,9 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 32,
     gap: 16,
+  },
+  boardArea: {
+    position: 'relative',
   },
   loading: {
     height: 300,

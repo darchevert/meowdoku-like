@@ -1,7 +1,8 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Modal, StyleSheet, Switch, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 import { useGameStore } from '../state/store';
+import { PressableScale } from './PressableScale';
 
 interface SettingsModalProps {
   visible: boolean;
@@ -22,9 +23,9 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
         <View style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>Réglages</Text>
-            <Pressable onPress={onClose}>
+            <PressableScale onPress={onClose}>
               <Text style={styles.close}>✕</Text>
-            </Pressable>
+            </PressableScale>
           </View>
 
           <Row label="Sons" value={soundEnabled} onToggle={toggleSound} />

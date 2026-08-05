@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 import {
   AVATARS,
@@ -9,6 +9,7 @@ import {
   type FrameId,
   useGameStore,
 } from '../state/store';
+import { PressableScale } from './PressableScale';
 
 const FRAME_COLORS: Record<FrameId, string> = {
   none: 'transparent',
@@ -40,9 +41,9 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
         <View style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>Profil</Text>
-            <Pressable onPress={onClose}>
+            <PressableScale onPress={onClose}>
               <Text style={styles.close}>✕</Text>
-            </Pressable>
+            </PressableScale>
           </View>
 
           <View style={styles.identityRow}>
@@ -60,28 +61,28 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
           </View>
 
           <View style={styles.tabRow}>
-            <Pressable
+            <PressableScale
               style={[styles.tab, tab === 'avatar' && styles.tabActive]}
               onPress={() => setTab('avatar')}
             >
               <Text style={[styles.tabText, tab === 'avatar' && styles.tabTextActive]}>
                 Avatar
               </Text>
-            </Pressable>
-            <Pressable
+            </PressableScale>
+            <PressableScale
               style={[styles.tab, tab === 'frame' && styles.tabActive]}
               onPress={() => setTab('frame')}
             >
               <Text style={[styles.tabText, tab === 'frame' && styles.tabTextActive]}>
                 Cadre
               </Text>
-            </Pressable>
+            </PressableScale>
           </View>
 
           <ScrollView contentContainerStyle={styles.grid}>
             {tab === 'avatar'
               ? AVATARS.map((id) => (
-                  <Pressable
+                  <PressableScale
                     key={id}
                     style={styles.gridItem}
                     onPress={() => setPendingAvatar(id)}
@@ -92,10 +93,10 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
                         <Text style={styles.checkText}>✓</Text>
                       </View>
                     )}
-                  </Pressable>
+                  </PressableScale>
                 ))
               : FRAMES.map((id) => (
-                  <Pressable
+                  <PressableScale
                     key={id}
                     style={[styles.gridItem, { borderColor: FRAME_COLORS[id], borderWidth: 3 }]}
                     onPress={() => setPendingFrame(id)}
@@ -106,11 +107,11 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
                         <Text style={styles.checkText}>✓</Text>
                       </View>
                     )}
-                  </Pressable>
+                  </PressableScale>
                 ))}
           </ScrollView>
 
-          <Pressable
+          <PressableScale
             style={styles.confirmButton}
             onPress={() => {
               setAvatar(pendingAvatar);
@@ -119,7 +120,7 @@ export function ProfileModal({ visible, onClose }: ProfileModalProps) {
             }}
           >
             <Text style={styles.confirmText}>Confirmer</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
     </Modal>

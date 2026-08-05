@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 import { AVATAR_EMOJI, useGameStore } from '../state/store';
 import { DAILY_CHALLENGE_UNLOCK_LEVEL } from '../utils/levelConfig';
 import { ProfileModal } from '../components/ProfileModal';
 import { StreakModal } from '../components/StreakModal';
 import { SettingsModal } from '../components/SettingsModal';
+import { PressableScale } from '../components/PressableScale';
 
 interface HomeScreenProps {
   onPlay: () => void;
@@ -24,12 +25,12 @@ export function HomeScreen({ onPlay }: HomeScreenProps) {
   return (
     <View style={styles.screen}>
       <View style={styles.topRow}>
-        <Pressable style={styles.avatarButton} onPress={() => setShowProfile(true)}>
+        <PressableScale style={styles.avatarButton} onPress={() => setShowProfile(true)}>
           <Text style={styles.avatarEmoji}>{AVATAR_EMOJI[avatar]}</Text>
-        </Pressable>
-        <Pressable style={styles.settingsButton} onPress={() => setShowSettings(true)}>
+        </PressableScale>
+        <PressableScale style={styles.settingsButton} onPress={() => setShowSettings(true)}>
           <Text style={styles.settingsIcon}>⚙</Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       <View style={styles.cardsRow}>
@@ -47,13 +48,13 @@ export function HomeScreen({ onPlay }: HomeScreenProps) {
           )}
         </View>
 
-        <Pressable style={[styles.card, styles.streakCard]} onPress={() => setShowStreak(true)}>
+        <PressableScale style={[styles.card, styles.streakCard]} onPress={() => setShowStreak(true)}>
           <Text style={[styles.cardTitle, styles.streakTitle]}>Série</Text>
           <Text style={styles.cardIcon}>☀️</Text>
           <View style={styles.streakPill}>
             <Text style={styles.streakValue}>{streak}</Text>
           </View>
-        </Pressable>
+        </PressableScale>
       </View>
 
       <View style={styles.logoBlock}>
@@ -65,9 +66,9 @@ export function HomeScreen({ onPlay }: HomeScreenProps) {
         </Text>
       </View>
 
-      <Pressable style={styles.playButton} onPress={onPlay}>
+      <PressableScale style={styles.playButton} onPress={onPlay}>
         <Text style={styles.playButtonText}>Niveau {level}</Text>
-      </Pressable>
+      </PressableScale>
 
       <ProfileModal visible={showProfile} onClose={() => setShowProfile(false)} />
       <StreakModal visible={showStreak} onClose={() => setShowStreak(false)} />
