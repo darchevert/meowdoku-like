@@ -73,12 +73,13 @@ progression (niveaux, score, série quotidienne, monnaie).
   ses déductions avant de s'engager.
 - **Double-tap** : engage un chat sur la case. S'il y a effectivement un
   chat à cet endroit dans la solution, il se pose (🐱). Sinon, la case
-  reçoit une ✕ **rouge, définitive** (bordure rouge assortie) — elle ne
-  peut plus jamais être modifiée, ni par un tap simple ni par un nouveau
-  double-tap — et le joueur perd une vie parmi les 3 disponibles pour ce
-  niveau (affichées en 🐟 en haut de l'écran). À 0 vie, le niveau est raté
-  et propose de réessayer (nouvelle grille de la même taille) ou de
-  retourner à l'accueil.
+  reçoit une ✕ **rouge, définitive** — elle ne peut plus jamais être
+  modifiée, ni par un tap simple ni par un nouveau double-tap — et le
+  joueur perd une vie parmi les 3 disponibles pour ce niveau (affichées en
+  🐟 en haut de l'écran). L'erreur déclenche aussi une petite vibration
+  (haptique, désactivable dans les réglages) et une légère secousse de
+  l'écran. À 0 vie, le niveau est raté et propose de réessayer (nouvelle
+  grille de la même taille) ou de retourner à l'accueil.
 - Les power-ups (🐱 auto-placement, 💡 indice) restent des raccourcis
   payants (poissons 🐟 de la monnaie du joueur) qui ne coûtent jamais de
   vie.

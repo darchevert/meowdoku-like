@@ -63,7 +63,6 @@ export function Cell({ state, regionId, conflict, hinted, size, onPress }: CellP
           { backgroundColor: bg, borderRadius: radius },
           conflict && styles.conflict,
           hinted && styles.hinted,
-          isWrong && styles.wrong,
         ]}
       >
         {state === 'cat' && (
@@ -94,10 +93,6 @@ const styles = StyleSheet.create({
   hinted: {
     borderWidth: 3,
     borderColor: colors.accentDark,
-  },
-  wrong: {
-    borderWidth: 3,
-    borderColor: colors.danger,
   },
   markWrap: {
     width: '100%',

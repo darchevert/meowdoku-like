@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, ScrollView, StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Board } from '../components/Board';
 import { TopBar } from '../components/TopBar';
 import { RuleCards } from '../components/RuleCard';
@@ -38,6 +39,7 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
   const useAutoCatCharge = useGameStore((s) => s.useAutoCat);
   const buyHint = useGameStore((s) => s.buyHint);
   const buyAutoCat = useGameStore((s) => s.buyAutoCat);
+  const hapticsEnabled = useGameStore((s) => s.hapticsEnabled);
 
   // The puzzle on screen tracks its own level rather than the store's
   // (which advances the instant a level is completed): otherwise the win
@@ -59,6 +61,22 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
   const [autoCatsUsed, setAutoCatsUsed] = useState(0);
 
   const lastTapRef = useRef<{ row: number; col: number; time: number } | null>(null);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  /** A quick horizontal wobble plus a haptic buzz — the physical "no"
+   * feedback for a wrong guess, on top of the red locked cross itself. */
+  function triggerWrongFeedback() {
+    if (hapticsEnabled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    }
+    shakeAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 1, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -1, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 1, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 45, useNativeDriver: true }),
+    ]).start();
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -141,6 +159,7 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
     }
 
     setCell(row, col, 'wrong');
+    triggerWrongFeedback();
     setLives((n) => {
       const next = n - 1;
       if (next <= 0) setLost(true);
@@ -199,40 +218,47 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
     setCell(row, puzzle.solution[row], 'cat');
   }
 
+  const shakeTranslate = shakeAnim.interpolate({
+    inputRange: [-1, 1],
+    outputRange: [-8, 8],
+  });
+
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <TopBar level={activeLevel} score={score} onBack={onBack} onSettings={onSettings} />
+      <Animated.View style={[styles.shakeArea, { transform: [{ translateX: shakeTranslate }] }]}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <TopBar level={activeLevel} score={score} onBack={onBack} onSettings={onSettings} />
 
-        <ProgressBadges
-          catsPlaced={cats.length}
-          catsTotal={size}
-          lives={lives}
-          maxLives={MAX_LIVES}
-        />
-
-        <RuleCards />
-
-        {loading || !puzzle ? (
-          <View style={styles.loading}>
-            <ActivityIndicator size="large" color={colors.accent} />
-          </View>
-        ) : (
-          <Board
-            size={puzzle.size}
-            regions={puzzle.regions}
-            grid={grid}
-            conflictKeys={conflictKeys}
-            hintCell={hintCell}
-            onCellPress={handleCellPress}
+          <ProgressBadges
+            catsPlaced={cats.length}
+            catsTotal={size}
+            lives={lives}
+            maxLives={MAX_LIVES}
           />
-        )}
 
-        <View style={styles.powerRow}>
-          <PowerButton emoji="🐱" count={autoCats} onPress={handleAutoCat} />
-          <PowerButton emoji="💡" count={hints} onPress={handleHint} />
-        </View>
-      </ScrollView>
+          <RuleCards />
+
+          {loading || !puzzle ? (
+            <View style={styles.loading}>
+              <ActivityIndicator size="large" color={colors.accent} />
+            </View>
+          ) : (
+            <Board
+              size={puzzle.size}
+              regions={puzzle.regions}
+              grid={grid}
+              conflictKeys={conflictKeys}
+              hintCell={hintCell}
+              onCellPress={handleCellPress}
+            />
+          )}
+
+          <View style={styles.powerRow}>
+            <PowerButton emoji="🐱" count={autoCats} onPress={handleAutoCat} />
+            <PowerButton emoji="💡" count={hints} onPress={handleHint} />
+          </View>
+        </ScrollView>
+      </Animated.View>
 
       <WinModal
         visible={won}
@@ -263,6 +289,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  shakeArea: {
+    flex: 1,
   },
   content: {
     paddingTop: 16,
