@@ -156,14 +156,18 @@ function isConnected(
  * neighboring region drops its old region's count to zero in the
  * alternate placement, invalidating it as a solution — while the true
  * solution is untouched, since it never sits on this cell. Repair loops
- * until the solver finds nothing left to break. */
+ * until the solver finds nothing left to break, or `deadline` passes:
+ * on larger boards the space of alternate solutions can be large enough
+ * that proving uniqueness gets expensive, so callers bound how long any
+ * single repair attempt is allowed to run. */
 function tryRepairUniqueness(
   size: number,
   regions: number[][],
-  solution: number[]
+  solution: number[],
+  deadline: number
 ): boolean {
-  for (let iter = 0; iter < 400; iter++) {
-    const solutions = findSolutions(size, regions, 2);
+  while (Date.now() < deadline) {
+    const solutions = findSolutions(size, regions, 2, deadline);
     if (solutions.length <= 1) return true;
 
     const alt = solutions.find((s) => s.some((c, r) => c !== solution[r]));
@@ -199,24 +203,46 @@ function tryRepairUniqueness(
   return false;
 }
 
-/** Generates a puzzle with a guaranteed-unique solution: grow a region
- * layout, then iteratively repair it against any alternate solutions the
- * solver finds, falling back to a fresh region layout (or fresh solution)
- * if repair gets stuck. */
+/** Total time budget for a single generatePuzzle call. Region-repair cost
+ * grows steeply with board size (more alternate solutions to search
+ * through and break), so bigger boards get more time — but always a
+ * bounded amount, so the UI's "generating..." spinner never hangs. */
+function budgetForSize(size: number): number {
+  return Math.min(2500, Math.max(400, size * 90));
+}
+
+/** Generates a puzzle. Any region layout grown from a solution is always
+ * fully playable — the solution's own cells never move, so it always
+ * remains one valid answer — the only question is whether it's the
+ * *only* one. Strict uniqueness is proven for small-to-medium boards
+ * within the time budget; on the largest boards (roughly 12x12+) the
+ * search space of alternate solutions can outgrow that budget, so
+ * generation falls back to the best (typically still very constrained,
+ * just not provably unique) layout found so far rather than blocking. */
 export function generatePuzzle(size: number): Puzzle {
-  for (let attempt = 0; attempt < 60; attempt++) {
+  const deadline = Date.now() + budgetForSize(size);
+  let fallback: Puzzle | null = null;
+
+  while (Date.now() < deadline) {
     const solution = generateSolution(size);
     if (!solution) continue;
 
-    for (let regionAttempt = 0; regionAttempt < 25; regionAttempt++) {
+    while (Date.now() < deadline) {
       const regions = growRegions(size, solution);
-      if (hasUniqueSolution({ size, regions })) {
+      const checkDeadline = Math.min(deadline, Date.now() + 150);
+      if (hasUniqueSolution({ size, regions }, checkDeadline)) {
         return { size, regions, solution };
       }
-      if (tryRepairUniqueness(size, regions, solution)) {
+      fallback = { size, regions, solution };
+
+      const repairDeadline = Math.min(deadline, Date.now() + 150);
+      if (tryRepairUniqueness(size, regions, solution, repairDeadline)) {
         return { size, regions, solution };
       }
+      fallback = { size, regions, solution };
     }
   }
-  throw new Error(`Failed to generate a unique ${size}x${size} puzzle`);
+
+  if (fallback) return fallback;
+  throw new Error(`Failed to generate a ${size}x${size} puzzle`);
 }

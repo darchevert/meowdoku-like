@@ -22,8 +22,11 @@ export function Board({
   onCellPress,
 }: BoardProps) {
   const { width } = useWindowDimensions();
-  const boardMax = 440;
-  const boardSize = Math.min(width - 48, boardMax);
+  // Larger grids need every pixel they can get for touch targets to stay
+  // usable, so bigger boards claim more of the screen width.
+  const margin = size >= 12 ? 16 : 24;
+  const boardMax = 320 + size * 14;
+  const boardSize = Math.min(width - margin * 2, boardMax);
   const cellSize = useMemo(() => Math.floor(boardSize / size), [boardSize, size]);
 
   return (

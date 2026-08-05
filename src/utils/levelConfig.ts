@@ -1,21 +1,19 @@
-/** Board grows as the player advances, capping out once the grid gets
- * unwieldy on a phone screen. Level 21 is where the real app unlocks the
- * daily challenge, so campaign difficulty keeps ramping well past that. */
-const SIZE_THRESHOLDS: Array<{ upTo: number; size: number }> = [
-  { upTo: 2, size: 4 },
-  { upTo: 5, size: 5 },
-  { upTo: 9, size: 6 },
-  { upTo: 14, size: 7 },
-  { upTo: 20, size: 8 },
-  { upTo: 30, size: 9 },
-];
-// Generation time grows steeply past 9x9 (region-repair search gets
-// combinatorial), so campaign difficulty plateaus there.
-const MAX_SIZE = 9;
+/** Board grows as the player advances: level 1-2 start at 4x4, and each
+ * larger size sticks around for one level longer than the last (2, 3, 4,
+ * 5, ... levels) before growing again, so the ramp gets gentler exactly
+ * as boards get harder. Caps at 16x16. */
+const MIN_SIZE = 4;
+const MAX_SIZE = 16;
 
 export function levelToSize(level: number): number {
-  for (const { upTo, size } of SIZE_THRESHOLDS) {
-    if (level <= upTo) return size;
+  let size = MIN_SIZE;
+  let levelsUsedBySize = 0;
+  let tierWidth = 2;
+  while (size < MAX_SIZE) {
+    levelsUsedBySize += tierWidth;
+    if (level <= levelsUsedBySize) return size;
+    size++;
+    tierWidth++;
   }
   return MAX_SIZE;
 }

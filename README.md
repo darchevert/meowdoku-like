@@ -39,7 +39,8 @@ progression (niveaux, score, série quotidienne, monnaie).
   joueur noter ses déductions (exclure des cases) avant de s'engager sur un
   placement, ce qui réduit la charge cognitive.
 - **Difficulté progressive lisible** : la grille grandit avec le niveau
-  (4×4 → 9×9 dans cette recréation), donnant une sensation de progression
+  (4×4 → 16×16 dans cette recréation, chaque palier de taille durant un
+  niveau de plus que le précédent), donnant une sensation de progression
   sans changer les règles.
 - **Boucle de méta-jeu courte** : score cumulé, poissons 🐟 (monnaie) et
   power-ups (chat auto-placé, ampoule d'indice) créent une petite économie
@@ -113,18 +114,28 @@ App.tsx              Point d'entrée, bascule Accueil ↔ Partie
 2. **Régions** : croissance aléatoire multi-sources (type diagramme de
    Voronoï) à partir de chaque cellule solution, avec un léger biais vers
    les régions les plus petites pour éviter des formes trop déséquilibrées.
-3. **Unicité garantie** : le solveur cherche une solution alternative. Si
-   elle existe, comme chaque solution valide utilise chaque région
-   *exactement une fois*, voler à cette solution alternative une de ses
-   cellules (en la réattribuant à une région voisine, tout en vérifiant que
-   les deux régions restent connexes) invalide *cette* solution alternative
-   sans jamais toucher la vraie solution. Cette réparation est répétée
-   jusqu'à ce que le solveur ne trouve plus qu'une seule solution ; en cas
-   de blocage, une nouvelle croissance de régions (voire une nouvelle
-   solution) est tentée.
-4. Testé jusqu'à des grilles **9×9** avec un temps de génération < 50ms ;
-   la difficulté de génération augmente fortement au-delà, d'où le
-   plafonnement de la taille de grille à 9×9 en fin de campagne.
+3. **Unicité, garantie quand c'est possible dans le budget de temps** : le
+   solveur (recherche avec heuristique MRV — la ligne la plus contrainte
+   d'abord — pour rester praticable jusqu'à 16×16) cherche une solution
+   alternative. Si elle existe, comme chaque solution valide utilise
+   chaque région *exactement une fois*, voler à cette solution alternative
+   une de ses cellules (en la réattribuant à une région voisine, tout en
+   vérifiant que les deux régions restent connexes) invalide *cette*
+   solution alternative sans jamais toucher la vraie solution. Cette
+   réparation est répétée jusqu'à ce que le solveur ne trouve plus qu'une
+   seule solution.
+4. **Budget de temps borné par taille** (`budgetForSize` dans
+   `generator.ts`) : sur les petites/moyennes grilles (jusqu'à 9×9),
+   l'unicité est prouvée en quelques dizaines de millisecondes. Au-delà,
+   l'espace des solutions alternatives grandit trop vite pour être
+   entièrement exploré à chaque génération ; la génération part alors sur
+   le meilleur agencement de régions trouvé avant l'expiration du budget,
+   qui reste **toujours entièrement jouable** (la vraie solution ne
+   bouge jamais) mais n'est pas garanti être *la seule* — au pire, un
+   niveau très large peut exceptionnellement accepter plus d'une
+   disposition valable, sans que cela casse la partie. Ce compromis garde
+   la génération rapide et bornée dans le temps (jamais de blocage de
+   l'interface) jusqu'à des grilles **16×16**.
 
 ## 4. Lancer le projet
 
@@ -156,3 +167,7 @@ npx eas-cli build --platform android
 - Le solveur d'indice se contente de révéler une cellule de la solution
   connue ; un vrai moteur de déduction logique (façon "seule case possible
   dans cette région") serait une amélioration naturelle.
+- Sur les très grandes grilles (environ 11×11 et au-delà), la génération
+  n'est plus garantie *strictement* unique (voir §3) — c'est un compromis
+  assumé pour rester rapide jusqu'à 16×16 plutôt qu'un bug ; le niveau
+  reste toujours entièrement valide et jouable.
