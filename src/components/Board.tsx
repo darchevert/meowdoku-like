@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  Animated,
+  PanResponder,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+  type GestureResponderEvent,
+} from 'react-native';
 import { Cell } from './Cell';
 import { colors } from '../theme/colors';
 import type { CellState } from '../engine/types';
@@ -10,7 +17,12 @@ interface BoardProps {
   grid: CellState[][];
   conflictKeys: Set<string>;
   hintCell?: { row: number; col: number } | null;
-  onCellPress: (row: number, col: number) => void;
+  /** Fired once for the cell under the finger when a press starts (also
+   * covers a plain tap, which is just a gesture that never moves). */
+  onCellGestureStart: (row: number, col: number) => void;
+  /** Fired for each new cell the finger enters while still pressed. */
+  onCellGestureMove: (row: number, col: number) => void;
+  onCellGestureEnd: () => void;
   /** Changes whenever a genuinely new puzzle is loaded (not on every move)
    * — re-triggers the staggered reveal animation below. */
   revealKey: string | number;
@@ -24,7 +36,9 @@ export function Board({
   grid,
   conflictKeys,
   hintCell,
-  onCellPress,
+  onCellGestureStart,
+  onCellGestureMove,
+  onCellGestureEnd,
   revealKey,
 }: BoardProps) {
   const { width } = useWindowDimensions();
@@ -46,8 +60,83 @@ export function Board({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealKey]);
 
+  // Touch handling lives on the board as a whole (rather than per-cell
+  // Pressables) so a press-and-drag can paint across many cells in one
+  // gesture: React Native's responder system locks onto whichever view
+  // first claims a touch and keeps sending it move events even as the
+  // finger slides over sibling views, so individual Cell components would
+  // never see a drag that started elsewhere. Refs hold the latest props/
+  // layout so the PanResponder (created once) never closes over stale
+  // values.
+  const boardRef = useRef<View>(null);
+  const boardOrigin = useRef({ x: 0, y: 0 });
+  const lastGestureCell = useRef<{ row: number; col: number } | null>(null);
+  const propsRef = useRef({ size, cellSize, onCellGestureStart, onCellGestureMove, onCellGestureEnd });
+  propsRef.current = { size, cellSize, onCellGestureStart, onCellGestureMove, onCellGestureEnd };
+
+  function measureOrigin() {
+    boardRef.current?.measureInWindow((x, y) => {
+      boardOrigin.current = { x, y };
+    });
+  }
+
+  function cellAt(pageX: number, pageY: number): { row: number; col: number } | null {
+    const { size, cellSize } = propsRef.current;
+    if (!cellSize) return null;
+    const col = Math.floor((pageX - boardOrigin.current.x) / cellSize);
+    const row = Math.floor((pageY - boardOrigin.current.y) / cellSize);
+    if (row < 0 || row >= size || col < 0 || col >= size) return null;
+    return { row, col };
+  }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (evt: GestureResponderEvent) => {
+        // On web, a mousedown-then-drag over text nodes (the X/cat glyphs)
+        // starts a native text-selection/drag gesture unless suppressed.
+        // That doesn't break the *first* drag, but leaves the page in a
+        // selection state that hijacks the *next* mousedown into a native
+        // "drag the selection" operation instead of firing our move
+        // handler — preventDefault here stops the selection from ever
+        // starting.
+        evt.preventDefault?.();
+        measureOrigin();
+        const { pageX, pageY } = evt.nativeEvent;
+        const cell = cellAt(pageX, pageY);
+        lastGestureCell.current = cell;
+        if (cell) propsRef.current.onCellGestureStart(cell.row, cell.col);
+      },
+      onPanResponderMove: (evt: GestureResponderEvent) => {
+        evt.preventDefault?.();
+        const { pageX, pageY } = evt.nativeEvent;
+        const cell = cellAt(pageX, pageY);
+        if (!cell) return;
+        const last = lastGestureCell.current;
+        if (last && last.row === cell.row && last.col === cell.col) return;
+        lastGestureCell.current = cell;
+        propsRef.current.onCellGestureMove(cell.row, cell.col);
+      },
+      onPanResponderRelease: () => {
+        lastGestureCell.current = null;
+        propsRef.current.onCellGestureEnd();
+      },
+      onPanResponderTerminate: () => {
+        lastGestureCell.current = null;
+        propsRef.current.onCellGestureEnd();
+      },
+    })
+  ).current;
+
   return (
-    <View style={[styles.board, { width: cellSize * size }]}>
+    <View
+      ref={boardRef}
+      onLayout={measureOrigin}
+      style={[styles.board, { width: cellSize * size }]}
+      {...panResponder.panHandlers}
+    >
       {grid.map((row, r) => (
         <View key={r} style={styles.row}>
           {row.map((cellState, c) => {
@@ -76,7 +165,6 @@ export function Board({
                   conflict={conflictKeys.has(`${r},${c}`)}
                   hinted={hintCell?.row === r && hintCell?.col === c}
                   size={cellSize}
-                  onPress={() => onCellPress(r, c)}
                 />
               </Animated.View>
             );

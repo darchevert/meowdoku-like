@@ -150,15 +150,17 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
     });
   }
 
-  /** A single tap only ever notes/clears an exclusion mark — placing a
-   * cat is a deliberate, riskier action (see handleDoubleTap). Cells
-   * already locked in as a wrong guess never change again. */
-  function handleSingleTap(row: number, col: number) {
+  /** Sets a cell to the paint gesture's target state (see
+   * gestureModeRef below) — a no-op if the cell is already there, locked
+   * in as 'cat'/'wrong', or out of bounds. Idempotent, so repeatedly
+   * re-entering the same cell mid-drag is harmless. */
+  function paintCell(row: number, col: number, target: 'x' | 'empty') {
     setGrid((prev) => {
-      const current = prev[row][col];
-      if (current === 'cat' || current === 'wrong') return prev;
+      const current = prev[row]?.[col];
+      if (current === undefined || current === 'cat' || current === 'wrong') return prev;
+      if (current === target) return prev;
       const next = prev.map((r) => r.slice());
-      next[row][col] = current === 'empty' ? 'x' : 'empty';
+      next[row][col] = target;
       return next;
     });
   }
@@ -191,7 +193,15 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
     });
   }
 
-  function handleCellPress(row: number, col: number) {
+  /** Whether the in-progress press-and-drag paints X marks on ('add') or
+   * clears them from ('remove') every cell it passes over, decided once
+   * from the *first* cell touched — 'x' cells stay 'x' while dragging
+   * over an add-gesture, and vice versa. Null means this gesture does
+   * nothing (it started on a locked cell, or was consumed as a
+   * double-tap). */
+  const gestureModeRef = useRef<'add' | 'remove' | null>(null);
+
+  function handleGestureStart(row: number, col: number) {
     if (won || lost) return;
     setHintCell(null);
 
@@ -199,14 +209,33 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
     const last = lastTapRef.current;
     const isDoubleTap =
       !!last && last.row === row && last.col === col && now - last.time < DOUBLE_TAP_MS;
+    lastTapRef.current = { row, col, time: now };
 
     if (isDoubleTap) {
       lastTapRef.current = null;
+      gestureModeRef.current = null;
       handleDoubleTap(row, col);
-    } else {
-      lastTapRef.current = { row, col, time: now };
-      handleSingleTap(row, col);
+      return;
     }
+
+    const current = grid[row]?.[col];
+    if (current === undefined || current === 'cat' || current === 'wrong') {
+      gestureModeRef.current = null;
+      return;
+    }
+    const mode = current === 'empty' ? 'add' : 'remove';
+    gestureModeRef.current = mode;
+    paintCell(row, col, mode === 'add' ? 'x' : 'empty');
+  }
+
+  function handleGestureMove(row: number, col: number) {
+    const mode = gestureModeRef.current;
+    if (!mode) return;
+    paintCell(row, col, mode === 'add' ? 'x' : 'empty');
+  }
+
+  function handleGestureEnd() {
+    gestureModeRef.current = null;
   }
 
   function firstUnsolvedRow(): number | null {
@@ -276,7 +305,9 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
                   grid={grid}
                   conflictKeys={conflictKeys}
                   hintCell={hintCell}
-                  onCellPress={handleCellPress}
+                  onCellGestureStart={handleGestureStart}
+                  onCellGestureMove={handleGestureMove}
+                  onCellGestureEnd={handleGestureEnd}
                   revealKey={`${activeLevel}-${attempt}`}
                 />
               )}

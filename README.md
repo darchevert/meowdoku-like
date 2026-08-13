@@ -71,6 +71,19 @@ progression (niveaux, score, série quotidienne, monnaie).
 - **Tap simple** : bascule la case entre vide et exclue (✕ blanche).
   Purement une note pour le joueur, sans conséquence — c'est là qu'on pose
   ses déductions avant de s'engager.
+- **Appui maintenu + glissement** : peindre plusieurs cases d'un seul
+  geste. Le mode (ajouter ou retirer des ✕) est déterminé par l'état de la
+  *première* case touchée — vide au départ : chaque case survolée sans ✕ en
+  reçoit une (celles qui en ont déjà une ne sont pas touchées) ; ✕ au
+  départ : chaque case survolée qui a une ✕ la perd (les cases déjà vides
+  restent vides). Un tap simple n'est qu'un glissement de longueur nulle
+  dans ce modèle, donc le même code gère les deux. Techniquement, tout le
+  geste tactile de la grille est capté par un unique `PanResponder` au
+  niveau du `Board` (plutôt que des `Pressable` par case) : le système de
+  gestes de React Native verrouille un geste sur la première vue qui le
+  capte et continue de lui envoyer les événements même quand le doigt
+  glisse sur des cases voisines, donc des `Pressable` individuels ne
+  verraient jamais un glissement commencé ailleurs.
 - **Double-tap** : engage un chat sur la case. S'il y a effectivement un
   chat à cet endroit dans la solution, il se pose (🐱). Sinon, la case
   reçoit une ✕ **rouge, définitive** — elle ne peut plus jamais être

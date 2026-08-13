@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { colors, regionColor } from '../theme/colors';
 import type { CellState } from '../engine/types';
 
@@ -9,7 +9,6 @@ interface CellProps {
   conflict: boolean;
   hinted: boolean;
   size: number;
-  onPress: () => void;
 }
 
 /** A chunky, rounded-stroke X built from two crossed bars, matching the
@@ -32,21 +31,19 @@ function XMark({ size, color }: { size: number; color: string }) {
   );
 }
 
-export function Cell({ state, regionId, conflict, hinted, size, onPress }: CellProps) {
+/** Purely presentational — the whole board's touches are handled by a
+ * single PanResponder in Board (so a press-and-drag can paint across
+ * cells), so this has no onPress of its own. */
+export function Cell({ state, regionId, conflict, hinted, size }: CellProps) {
   const bg = regionColor(regionId);
   const gap = Math.max(1.5, size * 0.035);
   const radius = size * 0.22;
   const isWrong = state === 'wrong';
 
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={isWrong}
-      style={({ pressed }) => [
-        styles.hitArea,
-        { width: size, height: size, padding: gap, opacity: pressed ? 0.85 : 1 },
-      ]}
-      accessibilityRole="button"
+    <View
+      style={[styles.hitArea, { width: size, height: size, padding: gap }]}
+      accessible
       accessibilityLabel={
         state === 'cat'
           ? 'Chat'
@@ -71,7 +68,7 @@ export function Cell({ state, regionId, conflict, hinted, size, onPress }: CellP
         {state === 'x' && <XMark size={size} color="rgba(255,255,255,0.92)" />}
         {isWrong && <XMark size={size} color={colors.danger} />}
       </View>
-    </Pressable>
+    </View>
   );
 }
 
