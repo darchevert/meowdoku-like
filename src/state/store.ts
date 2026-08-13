@@ -63,6 +63,9 @@ interface GameState {
   useAutoCat: () => boolean;
   buyHint: () => boolean;
   buyAutoCat: () => boolean;
+  /** A free hint charge earned by watching a rewarded ad — unlike
+   * buyHint, never costs fish. */
+  grantHint: () => void;
 
   // Streak
   streak: number;
@@ -78,10 +81,38 @@ interface GameState {
   toggleSound: () => void;
   toggleMusic: () => void;
   toggleHaptics: () => void;
+
+  // Zen mode — level play with no lives/lose condition, off by default so
+  // the default experience keeps its stakes. Never applies to the daily
+  // challenge (see GameScreen), which is meant to stay a real one-shot.
+  zenModeEnabled: boolean;
+  toggleZenMode: () => void;
+
+  // Timer mode — off by default (a visible clock adds pressure some
+  // players don't want). Best time is kept per board size since regular
+  // levels regenerate a fresh board of that size each time, so "the
+  // level" isn't a stable thing to compare across attempts — the size is.
+  timerModeEnabled: boolean;
+  toggleTimerMode: () => void;
+  bestTimeBySize: Record<number, number>;
+  /** Returns true if this run beat (or set) the record for that size. */
+  recordBestTime: (size: number, seconds: number) => boolean;
+
+  // Companion — a persistent pet fed with fish, giving them a use beyond
+  // the hint/auto-cat shop. XP-based level with emoji tiers, plus
+  // separately unlockable/equippable cosmetic accessories.
+  companionXp: number;
+  unlockedAccessories: string[];
+  equippedAccessory: string | null;
+  feedCompanion: () => boolean;
+  unlockAccessory: (id: string, cost: number) => boolean;
+  equipAccessory: (id: string | null) => void;
 }
 
 const HINT_COST_FISH = 3;
 const AUTOCAT_COST_FISH = 3;
+const FEED_COST_FISH = 2;
+const FEED_XP_GAIN = 10;
 
 export const useGameStore = create<GameState>()(
   persist(
@@ -140,6 +171,7 @@ export const useGameStore = create<GameState>()(
         set((s) => ({ fish: s.fish - AUTOCAT_COST_FISH, autoCats: s.autoCats + 1 }));
         return true;
       },
+      grantHint: () => set((s) => ({ hints: s.hints + 1 })),
 
       streak: 0,
       bestStreak: 0,
@@ -166,6 +198,40 @@ export const useGameStore = create<GameState>()(
       toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),
       toggleMusic: () => set((s) => ({ musicEnabled: !s.musicEnabled })),
       toggleHaptics: () => set((s) => ({ hapticsEnabled: !s.hapticsEnabled })),
+
+      zenModeEnabled: false,
+      toggleZenMode: () => set((s) => ({ zenModeEnabled: !s.zenModeEnabled })),
+
+      timerModeEnabled: false,
+      toggleTimerMode: () => set((s) => ({ timerModeEnabled: !s.timerModeEnabled })),
+      bestTimeBySize: {},
+      recordBestTime: (size, seconds) => {
+        const current = get().bestTimeBySize[size];
+        if (current !== undefined && current <= seconds) return false;
+        set((s) => ({ bestTimeBySize: { ...s.bestTimeBySize, [size]: seconds } }));
+        return true;
+      },
+
+      companionXp: 0,
+      unlockedAccessories: [],
+      equippedAccessory: null,
+      feedCompanion: () => {
+        const { fish } = get();
+        if (fish < FEED_COST_FISH) return false;
+        set((s) => ({ fish: s.fish - FEED_COST_FISH, companionXp: s.companionXp + FEED_XP_GAIN }));
+        return true;
+      },
+      unlockAccessory: (id, cost) => {
+        const { fish, unlockedAccessories } = get();
+        if (unlockedAccessories.includes(id)) return true;
+        if (fish < cost) return false;
+        set((s) => ({
+          fish: s.fish - cost,
+          unlockedAccessories: [...s.unlockedAccessories, id],
+        }));
+        return true;
+      },
+      equipAccessory: (id) => set({ equippedAccessory: id }),
     }),
     {
       name: 'meowdoku-storage',

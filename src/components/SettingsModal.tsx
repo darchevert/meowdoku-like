@@ -16,6 +16,10 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const toggleSound = useGameStore((s) => s.toggleSound);
   const toggleMusic = useGameStore((s) => s.toggleMusic);
   const toggleHaptics = useGameStore((s) => s.toggleHaptics);
+  const zenModeEnabled = useGameStore((s) => s.zenModeEnabled);
+  const toggleZenMode = useGameStore((s) => s.toggleZenMode);
+  const timerModeEnabled = useGameStore((s) => s.timerModeEnabled);
+  const toggleTimerMode = useGameStore((s) => s.toggleTimerMode);
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -31,6 +35,8 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           <Row label="Sons" value={soundEnabled} onToggle={toggleSound} />
           <Row label="Musique" value={musicEnabled} onToggle={toggleMusic} />
           <Row label="Vibrations" value={hapticsEnabled} onToggle={toggleHaptics} />
+          <Row label="Mode Zen (sans vies)" value={zenModeEnabled} onToggle={toggleZenMode} />
+          <Row label="Mode chrono" value={timerModeEnabled} onToggle={toggleTimerMode} />
         </View>
       </View>
     </Modal>

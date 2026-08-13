@@ -64,10 +64,12 @@ progression (niveaux, score, série quotidienne, monnaie).
 
 | Écran | Éléments identifiés |
 |---|---|
-| **Accueil** | Logo "MEOWDOKU", bouton avatar (haut gauche), bouton réglages (haut droit), carte "Défi quotidien" (🔒 avant le niveau 21, 🎯 débloquée, ✅ si déjà réussie aujourd'hui), carte "Série" (streak), bouton "Niveau N" |
-| **Partie** | Barre du haut (retour / Niveau / Score / réglages), badge de progression 🐱 x/N, badge vies 🐟 (3 par niveau), 3 cartes de règles, grille de jeu, deux boutons de power-up (🐱 auto-placement, 💡 indice) avec compteur de charges |
+| **Accueil** | Logo "MEOWDOKU", bouton avatar (haut gauche), bouton réglages (haut droit), carte "Défi quotidien" (🔒 avant le niveau 21, 🎯 débloquée, ✅ si déjà réussie aujourd'hui), carte "Série" (streak), bannière compagnon (emoji + XP + accessoire équipé), bouton "Niveau N" |
+| **Partie** | Barre du haut (retour / Niveau / Score / réglages), badge de progression 🐱 x/N, badge vies 🐟 (3 par niveau) ou badge 🧘 Zen, chronomètre optionnel, 3 cartes de règles, grille de jeu, boutons de power-up (↩ annuler, 🐱 auto-placement, 💡 indice, 📺 pub — natif uniquement) |
 | **Profil** | Avatar + identifiant joueur, onglets Avatar/Cadre, grille de sélection, bouton Confirmer |
+| **Compagnon** | Chat + accessoire équipé, barre de progression XP, bouton "Nourrir", grille d'accessoires (déblocable/équipable) |
 | **Série quotidienne** | Soleil à toucher, compteur de jours, message de confirmation |
+| **Réglages** | Sons, Musique, Vibrations, Mode Zen, Mode chrono |
 
 ### Interaction sur la grille
 
@@ -149,6 +151,42 @@ Les deux mécanismes de rétention quotidienne sont pleinement fonctionnels :
     par le temps — seulement par un nombre de tentatives — pour que le
     résultat ne dépende que de la seed, jamais de la machine ou du
     moment de génération.
+
+### Compagnon, mode Zen, mode chrono, publicités récompensées
+
+- **Compagnon persistant** (`utils/companion.ts`, `CompanionModal.tsx`) —
+  la fonctionnalité différenciante : un chat qu'on nourrit avec les
+  poissons 🐟 (2 🐟 → +10 XP), qui monte de niveau et change d'emoji à
+  travers 6 paliers (🐱 → 😺 → 😸 → 😻 → 🐈 → 🦁), plus 5 accessoires
+  cosmétiques déblocables et équipables (nœud, lunettes, écharpe, fleur,
+  couronne) affichés à côté du compagnon. Bannière tappable sur l'accueil,
+  écran complet en modale. Ça donne une utilité à la monnaie au-delà du
+  shop indice/auto-placement, et une raison de revenir qui n'est ni un
+  niveau ni un défi chronométré.
+- **Mode Zen** (réglage, off par défaut) — désactive les vies pour les
+  niveaux normaux : une mauvaise case est toujours marquée ✕ rouge et
+  verrouillée (le retour visuel reste utile), mais ne coûte plus de vie et
+  ne peut plus faire perdre la partie. Ne s'applique jamais au défi
+  quotidien, qui doit garder son enjeu de tentative unique.
+- **Annuler** (bouton ↩ à côté des power-ups, toujours gratuit) — annule
+  le dernier geste (un tap, un glissé entier, ou un double-tap raté) et
+  restaure la grille *et* les vies à leur état d'avant ce geste. Un geste
+  qui n'a rien modifié (case déjà verrouillée) n'est pas empilé dans
+  l'historique.
+- **Mode chrono** (réglage, off par défaut) — affiche un chronomètre
+  pendant la partie et garde le meilleur temps par taille de grille
+  (`bestTimeBySize`), affiché dans la modale de victoire avec "🏆 Nouveau
+  record !" le cas échéant.
+- **Publicités récompensées** (`utils/ads.ts`) — bouton 📺 à côté des
+  power-ups (niveaux normaux uniquement, masqué sur web) qui donne un
+  indice gratuit après visionnage. **Actuellement un mock** : un vrai SDK
+  publicitaire (AdMob via `react-native-google-mobile-ads`) nécessite un
+  plugin de config Expo, un build natif (EAS) et un compte AdMob — rien
+  de tout ça n'est installable ni testable dans cet environnement de
+  développement sandboxé, sans outillage natif ni appareil. `showRewardedAd`
+  simule la même forme asynchrone "charger → afficher → récompenser"
+  qu'un vrai SDK, pour que le remplacement par l'intégration réelle soit
+  un changement d'une fonction, pas une refonte de GameScreen.
 
 ## 2. Choix techniques
 
@@ -262,3 +300,6 @@ npx eas-cli build --platform android
   n'est plus garantie *strictement* unique (voir §3) — c'est un compromis
   assumé pour rester rapide jusqu'à 16×16 plutôt qu'un bug ; le niveau
   reste toujours entièrement valide et jouable.
+- Les publicités récompensées (§1) sont un mock — voir
+  `utils/ads.ts` pour ce qu'il reste à faire pour un vrai SDK
+  (`react-native-google-mobile-ads`, build natif EAS, compte AdMob).

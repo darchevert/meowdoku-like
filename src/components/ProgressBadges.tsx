@@ -7,9 +7,12 @@ interface ProgressBadgesProps {
   catsTotal: number;
   lives: number;
   maxLives: number;
+  /** Replaces the lives pill with a "no stakes" badge — used for zen-mode
+   * level play, where wrong guesses don't cost anything. */
+  zen?: boolean;
 }
 
-export function ProgressBadges({ catsPlaced, catsTotal, lives, maxLives }: ProgressBadgesProps) {
+export function ProgressBadges({ catsPlaced, catsTotal, lives, maxLives, zen }: ProgressBadgesProps) {
   return (
     <View style={styles.row}>
       <View style={styles.pill}>
@@ -18,13 +21,20 @@ export function ProgressBadges({ catsPlaced, catsTotal, lives, maxLives }: Progr
           {catsPlaced}/{catsTotal}
         </Text>
       </View>
-      <View style={styles.pill}>
-        {Array.from({ length: maxLives }).map((_, i) => (
-          <Text key={i} style={[styles.fish, i >= lives && styles.fishLost]}>
-            🐟
-          </Text>
-        ))}
-      </View>
+      {zen ? (
+        <View style={styles.pill}>
+          <Text style={styles.emoji}>🧘</Text>
+          <Text style={styles.count}>Zen</Text>
+        </View>
+      ) : (
+        <View style={styles.pill}>
+          {Array.from({ length: maxLives }).map((_, i) => (
+            <Text key={i} style={[styles.fish, i >= lives && styles.fishLost]}>
+              🐟
+            </Text>
+          ))}
+        </View>
+      )}
     </View>
   );
 }

@@ -14,6 +14,15 @@ interface WinModalProps {
    * which has no "next level" to skip past). */
   secondaryLabel?: string;
   onSecondary?: () => void;
+  /** Only shown when timer mode is on. */
+  elapsedSeconds?: number;
+  isNewRecord?: boolean;
+}
+
+function formatTime(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 export function WinModal({
@@ -25,6 +34,8 @@ export function WinModal({
   onPrimary,
   secondaryLabel,
   onSecondary,
+  elapsedSeconds,
+  isNewRecord,
 }: WinModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -36,6 +47,12 @@ export function WinModal({
             <Text style={styles.reward}>+{scoreEarned} points</Text>
             <Text style={styles.reward}>+{fishEarned} 🐟</Text>
           </View>
+          {elapsedSeconds !== undefined && (
+            <Text style={styles.timeText}>
+              Temps : {formatTime(elapsedSeconds)}
+              {isNewRecord ? ' — 🏆 Nouveau record !' : ''}
+            </Text>
+          )}
           <PressableScale style={styles.primaryButton} onPress={onPrimary}>
             <Text style={styles.primaryButtonText}>{primaryLabel}</Text>
           </PressableScale>
@@ -84,6 +101,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: colors.success,
+  },
+  timeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.inkSoft,
+    marginTop: -6,
+    marginBottom: 4,
   },
   primaryButton: {
     backgroundColor: colors.accent,

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Board } from '../components/Board';
 import { TopBar } from '../components/TopBar';
@@ -15,9 +15,15 @@ import type { CellState, Puzzle } from '../engine/types';
 import { levelToSize, scoreForCompletion } from '../utils/levelConfig';
 import { DAILY_CHALLENGE_FISH_REWARD, DAILY_CHALLENGE_SIZE, generateDailyPuzzle } from '../utils/dailyChallenge';
 import { playSound } from '../utils/sounds';
+import { showRewardedAd } from '../utils/ads';
 import { useGameStore } from '../state/store';
 import { colors } from '../theme/colors';
 import { MAX_CONTENT_WIDTH } from '../theme/layout';
+
+// Rewarded ads need a native SDK (see utils/ads.ts) that can't run in a
+// browser tab — hidden on web rather than offering a button that could
+// never show a real ad there once the mock is swapped for the real one.
+const ADS_SUPPORTED = Platform.OS !== 'web';
 
 const FISH_REWARD = 3;
 const HINT_HIGHLIGHT_MS = 2500;
@@ -51,6 +57,15 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
   const buyAutoCat = useGameStore((s) => s.buyAutoCat);
   const hapticsEnabled = useGameStore((s) => s.hapticsEnabled);
   const soundEnabled = useGameStore((s) => s.soundEnabled);
+  const zenModeEnabled = useGameStore((s) => s.zenModeEnabled);
+  const timerModeEnabled = useGameStore((s) => s.timerModeEnabled);
+  const recordBestTime = useGameStore((s) => s.recordBestTime);
+  const grantHint = useGameStore((s) => s.grantHint);
+
+  // The daily challenge always keeps its real stakes — zen mode is a
+  // level-play comfort setting, not something that should water down the
+  // one shared, one-shot puzzle of the day.
+  const zenActive = zenModeEnabled && !daily;
 
   // The puzzle on screen tracks its own level rather than the store's
   // (which advances the instant a level is completed): otherwise the win
@@ -83,6 +98,17 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const celebrationIdRef = useRef(0);
   const [celebration, setCelebration] = useState<CelebrationTrigger | null>(null);
+
+  // Undo: one history entry per user gesture (not per cell touched
+  // mid-drag), so undoing a whole drag stroke — or a wrong double-tap
+  // guess, lives included — is a single step. A ref avoids re-rendering
+  // on every push; `canUndo` mirrors "is it non-empty" for the button.
+  const historyRef = useRef<Array<{ grid: CellState[][]; lives: number }>>([]);
+  const [canUndo, setCanUndo] = useState(false);
+
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const [lastElapsedSec, setLastElapsedSec] = useState(0);
+  const [isNewRecord, setIsNewRecord] = useState(false);
 
   function playIfEnabled(key: Parameters<typeof playSound>[0]) {
     if (soundEnabled) playSound(key);
@@ -122,6 +148,10 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     setHintsUsed(0);
     setAutoCatsUsed(0);
     lastTapRef.current = null;
+    historyRef.current = [];
+    setCanUndo(false);
+    setElapsedSec(0);
+    setIsNewRecord(false);
     const timer = setTimeout(() => {
       const p = daily ? generateDailyPuzzle() : generatePuzzle(size);
       setPuzzle(p);
@@ -131,6 +161,12 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLevel, attempt]);
+
+  useEffect(() => {
+    if (!timerModeEnabled || loading || !puzzle || won || lost) return;
+    const interval = setInterval(() => setElapsedSec((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [timerModeEnabled, loading, puzzle, won, lost]);
 
   const cats = useMemo(() => {
     const list: Array<{ row: number; col: number }> = [];
@@ -159,6 +195,10 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
         completeLevel({ scoreEarned, fishEarned });
       }
       setLastReward({ score: scoreEarned, fish: fishEarned });
+      if (timerModeEnabled) {
+        setLastElapsedSec(elapsedSec);
+        setIsNewRecord(recordBestTime(puzzle.size, elapsedSec));
+      }
       setWon(true);
       playIfEnabled('win');
     }
@@ -171,6 +211,24 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
       next[row][col] = state;
       return next;
     });
+  }
+
+  /** Snapshots grid+lives just before a mutating gesture, so `handleUndo`
+   * can restore both together — undoing a wrong guess should give the
+   * life back too, not just erase the red mark. Call once per gesture,
+   * right before the mutation it's about to make. */
+  function pushHistory() {
+    historyRef.current.push({ grid: grid.map((r) => r.slice()), lives });
+    setCanUndo(true);
+  }
+
+  function handleUndo() {
+    const entry = historyRef.current.pop();
+    if (!entry) return;
+    setCanUndo(historyRef.current.length > 0);
+    setGrid(entry.grid);
+    setLives(entry.lives);
+    setLost(false);
   }
 
   /** Sets a cell to the paint gesture's target state (see
@@ -191,10 +249,14 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
   /** Double-tapping a cell commits to placing a cat there. If it's
    * actually correct the cat is placed; if not, the guess costs a life
    * and the cell is permanently marked "wrong" (red, locked) — a cell
-   * already marked that way can't be re-guessed or lose another life. */
+   * already marked that way can't be re-guessed or lose another life.
+   * In zen mode (regular levels only, never the daily challenge) a wrong
+   * guess still gets marked and still gives feedback, it just doesn't
+   * cost a life or end the level. */
   function handleDoubleTap(row: number, col: number) {
     if (!puzzle) return;
     if (grid[row][col] === 'cat' || grid[row][col] === 'wrong') return;
+    pushHistory();
 
     if (col === puzzle.solution[row]) {
       setCell(row, col, 'cat');
@@ -206,6 +268,7 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     setCell(row, col, 'wrong');
     triggerWrongFeedback();
     playIfEnabled('wrong');
+    if (zenActive) return;
     setLives((n) => {
       const next = n - 1;
       if (next <= 0) {
@@ -248,6 +311,7 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     }
     const mode = current === 'empty' ? 'add' : 'remove';
     gestureModeRef.current = mode;
+    pushHistory();
     paintCell(row, col, mode === 'add' ? 'x' : 'empty');
   }
 
@@ -294,6 +358,18 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     setCell(row, puzzle.solution[row], 'cat');
   }
 
+  const [adLoading, setAdLoading] = useState(false);
+
+  /** Watch a rewarded ad for a free hint charge — see utils/ads.ts for
+   * why this currently plays a simulated ad rather than a real one. */
+  async function handleWatchAd() {
+    if (adLoading) return;
+    setAdLoading(true);
+    const rewarded = await showRewardedAd();
+    setAdLoading(false);
+    if (rewarded) grantHint();
+  }
+
   const shakeTranslate = shakeAnim.interpolate({
     inputRange: [-1, 1],
     outputRange: [-8, 8],
@@ -334,7 +410,14 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
               catsTotal={size}
               lives={lives}
               maxLives={MAX_LIVES}
+              zen={zenActive}
             />
+
+            {timerModeEnabled && (
+              <Text style={styles.timer}>
+                ⏱ {Math.floor(elapsedSec / 60)}:{String(elapsedSec % 60).padStart(2, '0')}
+              </Text>
+            )}
 
             <RuleCards />
 
@@ -360,8 +443,16 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
             </View>
 
             <View style={styles.powerRow}>
+              <PowerButton emoji="↩" onPress={handleUndo} disabled={!canUndo} />
               <PowerButton emoji="🐱" count={autoCats} onPress={handleAutoCat} />
               <PowerButton emoji="💡" count={hints} onPress={handleHint} />
+              {ADS_SUPPORTED && (
+                <PowerButton
+                  emoji={adLoading ? '⏳' : '📺'}
+                  onPress={handleWatchAd}
+                  disabled={adLoading}
+                />
+              )}
             </View>
           </View>
         </ScrollView>
@@ -383,6 +474,8 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
         }
         secondaryLabel={daily ? undefined : 'Accueil'}
         onSecondary={daily ? undefined : onBack}
+        elapsedSeconds={timerModeEnabled ? lastElapsedSec : undefined}
+        isNewRecord={isNewRecord}
       />
 
       <LoseModal
@@ -429,6 +522,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 24,
     marginTop: 8,
+  },
+  timer: {
+    alignSelf: 'center',
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.inkSoft,
   },
   doneCard: {
     marginTop: 48,

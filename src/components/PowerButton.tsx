@@ -5,17 +5,27 @@ import { PressableScale } from './PressableScale';
 
 interface PowerButtonProps {
   emoji: string;
-  count: number;
+  /** Omit for a free action with no charge count (e.g. undo) — hides the
+   * badge instead of showing a meaningless number. */
+  count?: number;
   onPress: () => void;
+  disabled?: boolean;
 }
 
-export function PowerButton({ emoji, count, onPress }: PowerButtonProps) {
+export function PowerButton({ emoji, count, onPress, disabled }: PowerButtonProps) {
   return (
-    <PressableScale style={styles.button} onPress={onPress} accessibilityRole="button">
+    <PressableScale
+      style={[styles.button, disabled && styles.buttonDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+    >
       <Text style={styles.emoji}>{emoji}</Text>
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{count}</Text>
-      </View>
+      {count !== undefined && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{count}</Text>
+        </View>
+      )}
     </PressableScale>
   );
 }
@@ -33,6 +43,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
+  },
+  buttonDisabled: {
+    opacity: 0.35,
   },
   emoji: {
     fontSize: 28,
