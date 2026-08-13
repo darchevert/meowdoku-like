@@ -16,6 +16,7 @@ import { levelToSize, scoreForCompletion } from '../utils/levelConfig';
 import { playSound } from '../utils/sounds';
 import { useGameStore } from '../state/store';
 import { colors } from '../theme/colors';
+import { MAX_CONTENT_WIDTH } from '../theme/layout';
 
 const FISH_REWARD = 3;
 const HINT_HIGHLIGHT_MS = 2500;
@@ -250,39 +251,41 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
     <View style={styles.screen}>
       <Animated.View style={[styles.shakeArea, { transform: [{ translateX: shakeTranslate }] }]}>
         <ScrollView contentContainerStyle={styles.content}>
-          <TopBar level={activeLevel} score={score} onBack={onBack} onSettings={onSettings} />
+          <View style={styles.inner}>
+            <TopBar level={activeLevel} score={score} onBack={onBack} onSettings={onSettings} />
 
-          <ProgressBadges
-            catsPlaced={cats.length}
-            catsTotal={size}
-            lives={lives}
-            maxLives={MAX_LIVES}
-          />
+            <ProgressBadges
+              catsPlaced={cats.length}
+              catsTotal={size}
+              lives={lives}
+              maxLives={MAX_LIVES}
+            />
 
-          <RuleCards />
+            <RuleCards />
 
-          <View style={styles.boardArea}>
-            <Celebration trigger={celebration} />
-            {loading || !puzzle ? (
-              <View style={styles.loading}>
-                <ActivityIndicator size="large" color={colors.accent} />
-              </View>
-            ) : (
-              <Board
-                size={puzzle.size}
-                regions={puzzle.regions}
-                grid={grid}
-                conflictKeys={conflictKeys}
-                hintCell={hintCell}
-                onCellPress={handleCellPress}
-                revealKey={`${activeLevel}-${attempt}`}
-              />
-            )}
-          </View>
+            <View style={styles.boardArea}>
+              <Celebration trigger={celebration} />
+              {loading || !puzzle ? (
+                <View style={styles.loading}>
+                  <ActivityIndicator size="large" color={colors.accent} />
+                </View>
+              ) : (
+                <Board
+                  size={puzzle.size}
+                  regions={puzzle.regions}
+                  grid={grid}
+                  conflictKeys={conflictKeys}
+                  hintCell={hintCell}
+                  onCellPress={handleCellPress}
+                  revealKey={`${activeLevel}-${attempt}`}
+                />
+              )}
+            </View>
 
-          <View style={styles.powerRow}>
-            <PowerButton emoji="🐱" count={autoCats} onPress={handleAutoCat} />
-            <PowerButton emoji="💡" count={hints} onPress={handleHint} />
+            <View style={styles.powerRow}>
+              <PowerButton emoji="🐱" count={autoCats} onPress={handleAutoCat} />
+              <PowerButton emoji="💡" count={hints} onPress={handleHint} />
+            </View>
           </View>
         </ScrollView>
       </Animated.View>
@@ -323,6 +326,11 @@ const styles = StyleSheet.create({
   content: {
     paddingTop: 16,
     paddingBottom: 32,
+    alignItems: 'center',
+  },
+  inner: {
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
     gap: 16,
   },
   boardArea: {

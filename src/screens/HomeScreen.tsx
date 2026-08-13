@@ -7,6 +7,7 @@ import { ProfileModal } from '../components/ProfileModal';
 import { StreakModal } from '../components/StreakModal';
 import { SettingsModal } from '../components/SettingsModal';
 import { PressableScale } from '../components/PressableScale';
+import { MAX_CONTENT_WIDTH } from '../theme/layout';
 
 interface HomeScreenProps {
   onPlay: () => void;
@@ -24,51 +25,53 @@ export function HomeScreen({ onPlay }: HomeScreenProps) {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.topRow}>
-        <PressableScale style={styles.avatarButton} onPress={() => setShowProfile(true)}>
-          <Text style={styles.avatarEmoji}>{AVATAR_EMOJI[avatar]}</Text>
-        </PressableScale>
-        <PressableScale style={styles.settingsButton} onPress={() => setShowSettings(true)}>
-          <Text style={styles.settingsIcon}>⚙</Text>
-        </PressableScale>
-      </View>
-
-      <View style={styles.cardsRow}>
-        <View style={[styles.card, styles.dailyCard]}>
-          <Text style={styles.cardTitle}>Défi{'\n'}quotidien</Text>
-          {dailyUnlocked ? (
-            <Text style={styles.cardIcon}>🎯</Text>
-          ) : (
-            <>
-              <Text style={styles.lockIcon}>🔒</Text>
-              <Text style={styles.cardSubtitle}>
-                Débloqué au Niv. {DAILY_CHALLENGE_UNLOCK_LEVEL}
-              </Text>
-            </>
-          )}
+      <View style={styles.content}>
+        <View style={styles.topRow}>
+          <PressableScale style={styles.avatarButton} onPress={() => setShowProfile(true)}>
+            <Text style={styles.avatarEmoji}>{AVATAR_EMOJI[avatar]}</Text>
+          </PressableScale>
+          <PressableScale style={styles.settingsButton} onPress={() => setShowSettings(true)}>
+            <Text style={styles.settingsIcon}>⚙</Text>
+          </PressableScale>
         </View>
 
-        <PressableScale style={[styles.card, styles.streakCard]} onPress={() => setShowStreak(true)}>
-          <Text style={[styles.cardTitle, styles.streakTitle]}>Série</Text>
-          <Text style={styles.cardIcon}>☀️</Text>
-          <View style={styles.streakPill}>
-            <Text style={styles.streakValue}>{streak}</Text>
+        <View style={styles.cardsRow}>
+          <View style={[styles.card, styles.dailyCard]}>
+            <Text style={styles.cardTitle}>Défi{'\n'}quotidien</Text>
+            {dailyUnlocked ? (
+              <Text style={styles.cardIcon}>🎯</Text>
+            ) : (
+              <>
+                <Text style={styles.lockIcon}>🔒</Text>
+                <Text style={styles.cardSubtitle}>
+                  Débloqué au Niv. {DAILY_CHALLENGE_UNLOCK_LEVEL}
+                </Text>
+              </>
+            )}
           </View>
+
+          <PressableScale style={[styles.card, styles.streakCard]} onPress={() => setShowStreak(true)}>
+            <Text style={[styles.cardTitle, styles.streakTitle]}>Série</Text>
+            <Text style={styles.cardIcon}>☀️</Text>
+            <View style={styles.streakPill}>
+              <Text style={styles.streakValue}>{streak}</Text>
+            </View>
+          </PressableScale>
+        </View>
+
+        <View style={styles.logoBlock}>
+          <Text style={styles.logoLine}>
+            ME<Text style={styles.logoAccent}>O</Text>W
+          </Text>
+          <Text style={styles.logoLine}>
+            D<Text style={styles.logoOrange}>O</Text>KU
+          </Text>
+        </View>
+
+        <PressableScale style={styles.playButton} onPress={onPlay}>
+          <Text style={styles.playButtonText}>Niveau {level}</Text>
         </PressableScale>
       </View>
-
-      <View style={styles.logoBlock}>
-        <Text style={styles.logoLine}>
-          ME<Text style={styles.logoAccent}>O</Text>W
-        </Text>
-        <Text style={styles.logoLine}>
-          D<Text style={styles.logoOrange}>O</Text>KU
-        </Text>
-      </View>
-
-      <PressableScale style={styles.playButton} onPress={onPlay}>
-        <Text style={styles.playButtonText}>Niveau {level}</Text>
-      </PressableScale>
 
       <ProfileModal visible={showProfile} onClose={() => setShowProfile(false)} />
       <StreakModal visible={showStreak} onClose={() => setShowStreak(false)} />
@@ -81,6 +84,12 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
+    alignItems: 'center',
+  },
+  content: {
+    flex: 1,
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
     paddingHorizontal: 20,
     paddingTop: 24,
     alignItems: 'center',
