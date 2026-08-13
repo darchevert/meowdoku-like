@@ -1,1 +1,305 @@
-# meowdoku-like
+# Meowdoku-like
+
+Une recréation de **Meowdoku** (jeu mobile de puzzle logique avec des chats),
+jouable sur **iOS**, **Android** et **Web** à partir d'une seule base de code
+(Expo / React Native + React Native Web).
+
+## 1. Analyse du jeu original
+
+D'après les captures d'écran fournies (écran d'accueil, écran de partie
+niveau 1 en 4×4, niveau 4 en 6×6, modale de profil, écran de série
+quotidienne), voici la mécanique et les écrans identifiés.
+
+### Le puzzle : une variante de "Star Battle" / "Queens"
+
+La grille NxN est découpée en **N régions de couleur**. Le but est de placer
+un chat 🐱 par case de façon à respecter **trois règles simultanément**,
+rappelées en permanence sous forme de mini-cartes pédagogiques pendant la
+partie :
+
+1. **1 chat par couleur** — une seule région de couleur ne peut contenir
+   qu'un seul chat.
+2. **1 chat par ligne et colonne** — comme dans un sudoku/les échecs, une
+   seule ligne et une seule colonne ne peuvent contenir qu'un seul chat.
+3. **Les chats ne peuvent pas se toucher** — même en diagonale (règle du
+   roi aux échecs : distance de Tchebychev ≥ 2 entre deux chats).
+
+C'est exactement la mécanique du jeu **Queens** (popularisé par LinkedIn) :
+un cas particulier de "Star Battle" à une étoile, où les régions colorées
+remplacent les contraintes géométriques pures. Meowdoku l'habille d'un
+thème mignon (chats, poissons, avatars d'animaux) et d'une méta-couche de
+progression (niveaux, score, série quotidienne, monnaie).
+
+**Pourquoi ça fonctionne bien**, du point de vue design :
+
+- **Trois règles simples, apprises en 10 secondes**, mais dont la
+  combinaison crée une vraie profondeur de déduction logique — la même
+  formule qui a rendu Queens viral.
+- **Feedback immédiat, avec un vrai enjeu** : un tap simple ne fait que
+  noter/effacer une exclusion (✕), sans risque — c'est l'espace pour
+  déduire. Un double-tap engage réellement un chat sur la case : correct,
+  il se pose ; incorrect, la case est marquée ✕ (on sait maintenant que ce
+  n'est pas là) et coûte une vie 🐟 parmi les 3 disponibles par niveau. Ce
+  découplage "noter sans risque / valider avec risque" est ce qui rend la
+  logique déductive gratifiante plutôt que punitive.
+- **Difficulté progressive lisible** : la grille grandit avec le niveau
+  (4×4 → 16×16 dans cette recréation, chaque palier de taille durant un
+  niveau de plus que le précédent), donnant une sensation de progression
+  sans changer les règles.
+- **Boucle de méta-jeu courte** : score cumulé, poissons 🐟 (monnaie) et
+  power-ups (chat auto-placé, ampoule d'indice) créent une petite économie
+  qui récompense la persévérance sans bloquer la partie.
+- **Rituel de rétention** : l'écran "Touchez le soleil, allumez votre
+  série !" est un mécanisme de streak quotidien classique (type Duolingo),
+  qui ramène le joueur chaque jour indépendamment de la difficulté du
+  niveau en cours. Le défi quotidien (9×9, débloqué au niveau 21) est le
+  même mécanisme sous une autre forme : une seule tentative par jour, la
+  même grille pour tout le monde, qui donne une raison de revenir même
+  après avoir fini sa session de niveaux.
+- **Identité ludique et non punitive** : avatars/cadres à débloquer, thème
+  chaton, palette pastel chaleureuse — le jeu reste accessible et "cosy"
+  même quand le puzzle devient dur.
+
+### Écrans reconstitués
+
+| Écran | Éléments identifiés |
+|---|---|
+| **Accueil** | Logo "MEOWDOKU", bouton avatar (haut gauche), bouton réglages (haut droit), carte "Défi quotidien" (🔒 avant le niveau 21, 🎯 débloquée, ✅ si déjà réussie aujourd'hui), carte "Série" (streak), bannière compagnon (emoji + XP + accessoire équipé), bouton "Niveau N" |
+| **Partie** | Barre du haut (retour / Niveau / Score / réglages), badge de progression 🐱 x/N, badge vies 🐟 (3 par niveau) ou badge 🧘 Zen, chronomètre optionnel, 3 cartes de règles, grille de jeu, boutons de power-up (↩ annuler, 🐱 auto-placement, 💡 indice, 📺 pub — natif uniquement) |
+| **Profil** | Avatar + identifiant joueur, onglets Avatar/Cadre, grille de sélection, bouton Confirmer |
+| **Compagnon** | Chat + accessoire équipé, barre de progression XP, bouton "Nourrir", grille d'accessoires (déblocable/équipable) |
+| **Série quotidienne** | Soleil à toucher, compteur de jours, message de confirmation |
+| **Réglages** | Sons, Musique, Vibrations, Mode Zen, Mode chrono |
+
+### Interaction sur la grille
+
+- **Tap simple** : bascule la case entre vide et exclue (✕ blanche).
+  Purement une note pour le joueur, sans conséquence — c'est là qu'on pose
+  ses déductions avant de s'engager.
+- **Appui maintenu + glissement** : peindre plusieurs cases d'un seul
+  geste. Le mode (ajouter ou retirer des ✕) est déterminé par l'état de la
+  *première* case touchée — vide au départ : chaque case survolée sans ✕ en
+  reçoit une (celles qui en ont déjà une ne sont pas touchées) ; ✕ au
+  départ : chaque case survolée qui a une ✕ la perd (les cases déjà vides
+  restent vides). Un tap simple n'est qu'un glissement de longueur nulle
+  dans ce modèle, donc le même code gère les deux. Techniquement, tout le
+  geste tactile de la grille est capté par un unique `PanResponder` au
+  niveau du `Board` (plutôt que des `Pressable` par case) : le système de
+  gestes de React Native verrouille un geste sur la première vue qui le
+  capte et continue de lui envoyer les événements même quand le doigt
+  glisse sur des cases voisines, donc des `Pressable` individuels ne
+  verraient jamais un glissement commencé ailleurs.
+- **Double-tap** : engage un chat sur la case. S'il y a effectivement un
+  chat à cet endroit dans la solution, il se pose (🐱). Sinon, la case
+  reçoit une ✕ **rouge, définitive** — elle ne peut plus jamais être
+  modifiée, ni par un tap simple ni par un nouveau double-tap — et le
+  joueur perd une vie parmi les 3 disponibles pour ce niveau (affichées en
+  🐟 en haut de l'écran). L'erreur déclenche aussi une petite vibration
+  (haptique, désactivable dans les réglages) et une légère secousse de
+  l'écran. À 0 vie, le niveau est raté et propose de réessayer (nouvelle
+  grille de la même taille) ou de retourner à l'accueil.
+- **Bruitages** (désactivables via "Sons" dans les réglages) : un bref
+  carillon montant quand un chat est correctement placé, un double bip
+  grave quand un double-tap est faux, un arpège joyeux à la victoire du
+  niveau, une petite descente triste à 0 vie. Les 4 sons sont synthétisés
+  directement en PCM par `scripts/generate-sounds.mjs` (voir §3) plutôt
+  que des fichiers audio tiers, pour ne rien dépendre d'assets sous
+  licence.
+- **Célébration** : un chat correctement deviné (par double-tap, pas par
+  le raccourci 🐱 payant) fait apparaître brièvement "👏 Excellent ! 👏" (ou
+  Génial/Incroyable/Bravo/Parfait/Superbe, choisi au hasard) juste
+  au-dessus de la grille.
+- **Révélation du niveau** : à l'arrivée sur un niveau (ou au
+  "Réessayer"), les cases apparaissent en vague décalée plutôt que
+  d'un coup, pour marquer visuellement le début d'une nouvelle grille.
+- **Boutons** : tous les boutons de l'app (accueil, barre du jeu,
+  modales) rétrécissent légèrement au toucher et rebondissent au
+  relâchement (`PressableScale`), au lieu du simple changement d'opacité
+  par défaut.
+- Les power-ups (🐱 auto-placement, 💡 indice) restent des raccourcis
+  payants (poissons 🐟 de la monnaie du joueur) qui ne coûtent jamais de
+  vie.
+
+### Défi quotidien et série
+
+Les deux mécanismes de rétention quotidienne sont pleinement fonctionnels :
+
+- **Série** ("Touchez le soleil...") : un tap par jour sur le soleil
+  incrémente la série si le dernier tap datait d'hier, sinon la remet à 1.
+  Persistée (`streak`, `bestStreak`, `lastStreakClaimDate`) via
+  `AsyncStorage`.
+- **Défi quotidien** : débloqué au niveau 21 (carte "Défi quotidien" sur
+  l'accueil, verrouillée 🔒 avant, cible 🎯 après). C'est une grille 9×9
+  **identique pour tous les joueurs** un jour donné, générée par une seed
+  dérivée de la date (`utils/dailyChallenge.ts` + `utils/seededRandom.ts`,
+  un PRNG mulberry32 seedé par un hash de `YYYY-MM-DD`). Une seule
+  tentative comptée par jour ; réussir marque
+  `dailyChallengeCompletedDate` à aujourd'hui (le ✅ remplace le 🎯 sur
+  l'accueil) et rapporte 10 🐟 plus un score, sans faire avancer le niveau
+  du joueur. Réessayer après un échec régénère *la même* grille (seed
+  identique), pas une nouvelle. Une fois le défi du jour réussi, rouvrir
+  la carte affiche un écran "déjà réussi" à la place de la grille plutôt
+  que de permettre une deuxième tentative.
+  - **Piège de déterminisme évité** : `generatePuzzle` (utilisé pour les
+    niveaux normaux) borde sa recherche d'unicité par une échéance
+    d'horloge murale (`Date.now()`), ce qui la rend rapide pour jouer mais
+    *non reproductible* — avec la même seed, deux exécutions peuvent
+    tomber sur un résultat différent selon le temps CPU réellement
+    écoulé (vérifié empiriquement : ce n'était pas qu'un risque
+    théorique). Le défi quotidien utilise donc
+    `generatePuzzleDeterministic`, une variante qui ne borne jamais rien
+    par le temps — seulement par un nombre de tentatives — pour que le
+    résultat ne dépende que de la seed, jamais de la machine ou du
+    moment de génération.
+
+### Compagnon, mode Zen, mode chrono, publicités récompensées
+
+- **Compagnon persistant** (`utils/companion.ts`, `CompanionModal.tsx`) —
+  la fonctionnalité différenciante : un chat qu'on nourrit avec les
+  poissons 🐟 (2 🐟 → +10 XP), qui monte de niveau et change d'emoji à
+  travers 6 paliers (🐱 → 😺 → 😸 → 😻 → 🐈 → 🦁), plus 5 accessoires
+  cosmétiques déblocables et équipables (nœud, lunettes, écharpe, fleur,
+  couronne) affichés à côté du compagnon. Bannière tappable sur l'accueil,
+  écran complet en modale. Ça donne une utilité à la monnaie au-delà du
+  shop indice/auto-placement, et une raison de revenir qui n'est ni un
+  niveau ni un défi chronométré.
+- **Mode Zen** (réglage, off par défaut) — désactive les vies pour les
+  niveaux normaux : une mauvaise case est toujours marquée ✕ rouge et
+  verrouillée (le retour visuel reste utile), mais ne coûte plus de vie et
+  ne peut plus faire perdre la partie. Ne s'applique jamais au défi
+  quotidien, qui doit garder son enjeu de tentative unique.
+- **Annuler** (bouton ↩ à côté des power-ups, toujours gratuit) — annule
+  le dernier geste (un tap, un glissé entier, ou un double-tap raté) et
+  restaure la grille *et* les vies à leur état d'avant ce geste. Un geste
+  qui n'a rien modifié (case déjà verrouillée) n'est pas empilé dans
+  l'historique.
+- **Mode chrono** (réglage, off par défaut) — affiche un chronomètre
+  pendant la partie et garde le meilleur temps par taille de grille
+  (`bestTimeBySize`), affiché dans la modale de victoire avec "🏆 Nouveau
+  record !" le cas échéant.
+- **Publicités récompensées** (`utils/ads.ts`) — bouton 📺 à côté des
+  power-ups (niveaux normaux uniquement, masqué sur web) qui donne un
+  indice gratuit après visionnage. **Actuellement un mock** : un vrai SDK
+  publicitaire (AdMob via `react-native-google-mobile-ads`) nécessite un
+  plugin de config Expo, un build natif (EAS) et un compte AdMob — rien
+  de tout ça n'est installable ni testable dans cet environnement de
+  développement sandboxé, sans outillage natif ni appareil. `showRewardedAd`
+  simule la même forme asynchrone "charger → afficher → récompenser"
+  qu'un vrai SDK, pour que le remplacement par l'intégration réelle soit
+  un changement d'une fonction, pas une refonte de GameScreen.
+
+## 2. Choix techniques
+
+**Expo (React Native + React Native Web) en TypeScript** : une seule base
+de code compile nativement vers iOS, Android *et* Web, ce qui correspond
+exactement à la demande. Alternatives écartées : une PWA seule (pas d'app
+store natif) ou deux bases séparées (natif + web) qui auraient dupliqué
+toute la logique de puzzle.
+
+- **Zustand** (+ persistance `AsyncStorage`, compatible web) pour l'état
+  global : progression, score, monnaie, power-ups, série, profil,
+  réglages.
+- **Aucune dépendance de navigation lourde** : l'app est volontairement
+  simple (Accueil ↔ Partie + modales), un switch d'écran en state React
+  suffit et reste trivial à auditer.
+- **Pas d'assets graphiques propriétaires** : les chats/avatars utilisent
+  des emojis et des formes vectorielles simples, pour ne pas reproduire les
+  illustrations protégées du jeu original tout en gardant le même esprit
+  visuel (fond crème, accents bruns/orangés, cartes arrondies).
+
+## 3. Structure du projet
+
+```
+src/
+  engine/            Moteur du puzzle (pur TypeScript, sans dépendance UI)
+    types.ts          Types Puzzle / CellState / Conflict
+    generator.ts       Génération de puzzles à solution unique
+    solver.ts           Comptage/recherche de solutions, détection de conflits
+  state/
+    store.ts           Store Zustand (progression, profil, réglages) + persistance
+  theme/
+    colors.ts           Palette de couleurs (fond, encre, accent, régions)
+  utils/
+    levelConfig.ts       Taille de grille par niveau, calcul du score
+    sounds.ts             Lecture des bruitages (expo-audio)
+  components/         Composants UI réutilisables (Cell, Board, TopBar, RuleCard,
+                        ProgressBadges, PowerButton, WinModal, LoseModal,
+                        ProfileModal, StreakModal, SettingsModal, Celebration,
+                        PressableScale)
+  screens/
+    HomeScreen.tsx
+    GameScreen.tsx
+App.tsx              Point d'entrée, bascule Accueil ↔ Partie
+assets/sounds/       Bruitages .wav générés (voir scripts/generate-sounds.mjs)
+scripts/
+  generate-sounds.mjs  Synthétise les 4 bruitages en PCM, aucun asset tiers
+```
+
+### Génération de puzzle (`src/engine/generator.ts`)
+
+1. **Solution** : backtracking aléatoire qui place une permutation de
+   colonnes (une par ligne) telle que deux chats sur des lignes
+   consécutives ne soient jamais à une colonne de distance ≤ 1 (seules les
+   lignes consécutives peuvent se toucher, donc c'est la seule contrainte à
+   vérifier).
+2. **Régions** : croissance aléatoire multi-sources (type diagramme de
+   Voronoï) à partir de chaque cellule solution, avec un léger biais vers
+   les régions les plus petites pour éviter des formes trop déséquilibrées.
+3. **Unicité, garantie quand c'est possible dans le budget de temps** : le
+   solveur (recherche avec heuristique MRV — la ligne la plus contrainte
+   d'abord — pour rester praticable jusqu'à 16×16) cherche une solution
+   alternative. Si elle existe, comme chaque solution valide utilise
+   chaque région *exactement une fois*, voler à cette solution alternative
+   une de ses cellules (en la réattribuant à une région voisine, tout en
+   vérifiant que les deux régions restent connexes) invalide *cette*
+   solution alternative sans jamais toucher la vraie solution. Cette
+   réparation est répétée jusqu'à ce que le solveur ne trouve plus qu'une
+   seule solution.
+4. **Budget de temps borné par taille** (`budgetForSize` dans
+   `generator.ts`) : sur les petites/moyennes grilles (jusqu'à 9×9),
+   l'unicité est prouvée en quelques dizaines de millisecondes. Au-delà,
+   l'espace des solutions alternatives grandit trop vite pour être
+   entièrement exploré à chaque génération ; la génération part alors sur
+   le meilleur agencement de régions trouvé avant l'expiration du budget,
+   qui reste **toujours entièrement jouable** (la vraie solution ne
+   bouge jamais) mais n'est pas garanti être *la seule* — au pire, un
+   niveau très large peut exceptionnellement accepter plus d'une
+   disposition valable, sans que cela casse la partie. Ce compromis garde
+   la génération rapide et bornée dans le temps (jamais de blocage de
+   l'interface) jusqu'à des grilles **16×16**.
+
+## 4. Lancer le projet
+
+```bash
+npm install
+
+npm run web       # Web (navigateur)
+npm run ios       # iOS (simulateur/appareil via Expo Go ou build dev)
+npm run android   # Android (émulateur/appareil via Expo Go ou build dev)
+```
+
+Pour construire des binaires natifs distribuables (App Store / Play
+Store), utiliser [EAS Build](https://docs.expo.dev/build/introduction/) :
+
+```bash
+npx eas-cli build --platform ios
+npx eas-cli build --platform android
+```
+
+## 5. Limites connues / pistes d'évolution
+
+- Pas de backend : la progression, la série et le défi quotidien sont
+  locaux à l'appareil (`AsyncStorage`) — pas de classement partagé ni de
+  compte joueur multi-appareil.
+- Pas de vraies illustrations d'avatars (emojis à la place), pour rester
+  dans un scope raisonnable et éviter de reproduire des assets protégés.
+- Le solveur d'indice se contente de révéler une cellule de la solution
+  connue ; un vrai moteur de déduction logique (façon "seule case possible
+  dans cette région") serait une amélioration naturelle.
+- Sur les très grandes grilles (environ 11×11 et au-delà), la génération
+  n'est plus garantie *strictement* unique (voir §3) — c'est un compromis
+  assumé pour rester rapide jusqu'à 16×16 plutôt qu'un bug ; le niveau
+  reste toujours entièrement valide et jouable.
+- Les publicités récompensées (§1) sont un mock — voir
+  `utils/ads.ts` pour ce qu'il reste à faire pour un vrai SDK
+  (`react-native-google-mobile-ads`, build natif EAS, compte AdMob).
