@@ -5,37 +5,45 @@ import { PressableScale } from './PressableScale';
 
 interface WinModalProps {
   visible: boolean;
-  level: number;
+  title: string;
   scoreEarned: number;
   fishEarned: number;
-  onNext: () => void;
-  onHome: () => void;
+  primaryLabel: string;
+  onPrimary: () => void;
+  /** Omit to show only the primary button (e.g. the daily challenge,
+   * which has no "next level" to skip past). */
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 }
 
 export function WinModal({
   visible,
-  level,
+  title,
   scoreEarned,
   fishEarned,
-  onNext,
-  onHome,
+  primaryLabel,
+  onPrimary,
+  secondaryLabel,
+  onSecondary,
 }: WinModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.title}>Niveau {level} terminé !</Text>
+          <Text style={styles.title}>{title}</Text>
           <Text style={styles.emoji}>🐱🎉</Text>
           <View style={styles.rewardsRow}>
             <Text style={styles.reward}>+{scoreEarned} points</Text>
             <Text style={styles.reward}>+{fishEarned} 🐟</Text>
           </View>
-          <PressableScale style={styles.primaryButton} onPress={onNext}>
-            <Text style={styles.primaryButtonText}>Niveau suivant</Text>
+          <PressableScale style={styles.primaryButton} onPress={onPrimary}>
+            <Text style={styles.primaryButtonText}>{primaryLabel}</Text>
           </PressableScale>
-          <PressableScale style={styles.secondaryButton} onPress={onHome}>
-            <Text style={styles.secondaryButtonText}>Accueil</Text>
-          </PressableScale>
+          {secondaryLabel && onSecondary && (
+            <PressableScale style={styles.secondaryButton} onPress={onSecondary}>
+              <Text style={styles.secondaryButtonText}>{secondaryLabel}</Text>
+            </PressableScale>
+          )}
         </View>
       </View>
     </Modal>

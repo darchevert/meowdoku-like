@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { todayKey } from '../utils/date';
 
 export const AVATARS = [
   'cat',
@@ -35,10 +36,6 @@ function randomPlayerId(): string {
   return id;
 }
 
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 interface GameState {
   // Profile
   playerId: string;
@@ -54,6 +51,12 @@ interface GameState {
   hints: number;
   autoCats: number;
   completeLevel: (params: { scoreEarned: number; fishEarned: number }) => void;
+
+  // Daily challenge — a single shared puzzle per calendar day, separate
+  // from level progression (doesn't advance `level`).
+  dailyChallengeCompletedDate: string | null;
+  hasCompletedDailyToday: () => boolean;
+  completeDailyChallenge: (params: { scoreEarned: number; fishEarned: number }) => void;
 
   // Power-ups
   useHint: () => boolean;
@@ -100,6 +103,18 @@ export const useGameStore = create<GameState>()(
           score: s.score + scoreEarned,
           fish: s.fish + fishEarned,
         })),
+
+      dailyChallengeCompletedDate: null,
+      hasCompletedDailyToday: () => get().dailyChallengeCompletedDate === todayKey(),
+      completeDailyChallenge: ({ scoreEarned, fishEarned }) => {
+        const today = todayKey();
+        if (get().dailyChallengeCompletedDate === today) return;
+        set((s) => ({
+          dailyChallengeCompletedDate: today,
+          score: s.score + scoreEarned,
+          fish: s.fish + fishEarned,
+        }));
+      },
 
       useHint: () => {
         const { hints } = get();

@@ -4,18 +4,22 @@ import { colors } from '../theme/colors';
 import { PressableScale } from './PressableScale';
 
 interface TopBarProps {
-  level: number;
+  /** e.g. "Niveau" / "5" for a regular level, "Défi" / "du jour" for the
+   * daily challenge — kept as two parts to match the existing two-line
+   * stat layout in both cases. */
+  titleLabel: string;
+  titleValue: string;
   score: number;
   onBack: () => void;
   onSettings: () => void;
 }
 
-export function TopBar({ level, score, onBack, onSettings }: TopBarProps) {
+export function TopBar({ titleLabel, titleValue, score, onBack, onSettings }: TopBarProps) {
   return (
     <View style={styles.row}>
       <RoundButton icon="←" onPress={onBack} />
       <View style={styles.center}>
-        <Stat label="Niveau" value={String(level)} />
+        <Stat label={titleLabel} value={titleValue} />
         <Stat label="Score" value={String(score)} />
       </View>
       <RoundButton icon="⚙" onPress={onSettings} />

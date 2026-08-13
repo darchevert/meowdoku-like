@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Board } from '../components/Board';
 import { TopBar } from '../components/TopBar';
@@ -13,6 +13,7 @@ import { generatePuzzle } from '../engine/generator';
 import { findConflicts, isSolved } from '../engine/solver';
 import type { CellState, Puzzle } from '../engine/types';
 import { levelToSize, scoreForCompletion } from '../utils/levelConfig';
+import { DAILY_CHALLENGE_FISH_REWARD, DAILY_CHALLENGE_SIZE, generateDailyPuzzle } from '../utils/dailyChallenge';
 import { playSound } from '../utils/sounds';
 import { useGameStore } from '../state/store';
 import { colors } from '../theme/colors';
@@ -31,14 +32,19 @@ function emptyGrid(size: number): CellState[][] {
 interface GameScreenProps {
   onBack: () => void;
   onSettings: () => void;
+  /** Plays the single shared daily puzzle instead of the level ladder:
+   * fixed size, deterministic per-date board, one completion per day, no
+   * "next level" progression. */
+  daily?: boolean;
 }
 
-export function GameScreen({ onBack, onSettings }: GameScreenProps) {
+export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProps) {
   const level = useGameStore((s) => s.level);
   const score = useGameStore((s) => s.score);
   const hints = useGameStore((s) => s.hints);
   const autoCats = useGameStore((s) => s.autoCats);
   const completeLevel = useGameStore((s) => s.completeLevel);
+  const completeDailyChallenge = useGameStore((s) => s.completeDailyChallenge);
   const useHintCharge = useGameStore((s) => s.useHint);
   const useAutoCatCharge = useGameStore((s) => s.useAutoCat);
   const buyHint = useGameStore((s) => s.buyHint);
@@ -52,8 +58,16 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
   // generated underneath it before the player ever sees "Niveau suivant".
   const [activeLevel, setActiveLevel] = useState(level);
   // Bumped on retry so a fresh puzzle regenerates for the *same* level.
+  // In daily mode this still fires on retry, but the puzzle it generates
+  // is deterministic from the date, so it comes back identical anyway.
   const [attempt, setAttempt] = useState(0);
-  const size = levelToSize(activeLevel);
+  const size = daily ? DAILY_CHALLENGE_SIZE : levelToSize(activeLevel);
+  // Captured once on mount rather than derived from the live store value,
+  // so completing the daily challenge this session doesn't retroactively
+  // hide the board the player is mid-game on.
+  const [alreadyDoneToday] = useState(
+    () => daily && useGameStore.getState().hasCompletedDailyToday()
+  );
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [grid, setGrid] = useState<CellState[][]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +110,10 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
   }
 
   useEffect(() => {
+    if (alreadyDoneToday) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setWon(false);
     setLost(false);
@@ -105,7 +123,7 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
     setAutoCatsUsed(0);
     lastTapRef.current = null;
     const timer = setTimeout(() => {
-      const p = generatePuzzle(size);
+      const p = daily ? generateDailyPuzzle() : generatePuzzle(size);
       setPuzzle(p);
       setGrid(emptyGrid(size));
       setLoading(false);
@@ -134,8 +152,13 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
     if (!puzzle || won || lost) return;
     if (isSolved(puzzle.size, puzzle.regions, cats)) {
       const scoreEarned = scoreForCompletion(puzzle.size, hintsUsed, autoCatsUsed);
-      completeLevel({ scoreEarned, fishEarned: FISH_REWARD });
-      setLastReward({ score: scoreEarned, fish: FISH_REWARD });
+      const fishEarned = daily ? DAILY_CHALLENGE_FISH_REWARD : FISH_REWARD;
+      if (daily) {
+        completeDailyChallenge({ scoreEarned, fishEarned });
+      } else {
+        completeLevel({ scoreEarned, fishEarned });
+      }
+      setLastReward({ score: scoreEarned, fish: fishEarned });
       setWon(true);
       playIfEnabled('win');
     }
@@ -276,12 +299,35 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
     outputRange: [-8, 8],
   });
 
+  if (alreadyDoneToday) {
+    return (
+      <View style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.inner}>
+            <TopBar titleLabel="Défi" titleValue="du jour" score={score} onBack={onBack} onSettings={onSettings} />
+            <View style={styles.doneCard}>
+              <Text style={styles.doneEmoji}>🐱✅</Text>
+              <Text style={styles.doneTitle}>Défi du jour déjà réussi !</Text>
+              <Text style={styles.doneSubtitle}>Reviens demain pour un nouveau défi.</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <Animated.View style={[styles.shakeArea, { transform: [{ translateX: shakeTranslate }] }]}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.inner}>
-            <TopBar level={activeLevel} score={score} onBack={onBack} onSettings={onSettings} />
+            <TopBar
+              titleLabel={daily ? 'Défi' : 'Niveau'}
+              titleValue={daily ? 'du jour' : String(activeLevel)}
+              score={score}
+              onBack={onBack}
+              onSettings={onSettings}
+            />
 
             <ProgressBadges
               catsPlaced={cats.length}
@@ -323,19 +369,25 @@ export function GameScreen({ onBack, onSettings }: GameScreenProps) {
 
       <WinModal
         visible={won}
-        level={activeLevel}
+        title={daily ? 'Défi du jour terminé !' : `Niveau ${activeLevel} terminé !`}
         scoreEarned={lastReward.score}
         fishEarned={lastReward.fish}
-        onNext={() => {
-          setWon(false);
-          setActiveLevel((l) => l + 1);
-        }}
-        onHome={onBack}
+        primaryLabel={daily ? 'Accueil' : 'Niveau suivant'}
+        onPrimary={
+          daily
+            ? onBack
+            : () => {
+                setWon(false);
+                setActiveLevel((l) => l + 1);
+              }
+        }
+        secondaryLabel={daily ? undefined : 'Accueil'}
+        onSecondary={daily ? undefined : onBack}
       />
 
       <LoseModal
         visible={lost}
-        level={activeLevel}
+        title={daily ? 'Défi du jour raté' : `Niveau ${activeLevel} raté`}
         onRetry={() => {
           setLost(false);
           setAttempt((a) => a + 1);
@@ -377,5 +429,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 24,
     marginTop: 8,
+  },
+  doneCard: {
+    marginTop: 48,
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    padding: 32,
+  },
+  doneEmoji: {
+    fontSize: 40,
+    marginBottom: 8,
+  },
+  doneTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  doneSubtitle: {
+    fontSize: 15,
+    color: colors.inkSoft,
+    textAlign: 'center',
   },
 });

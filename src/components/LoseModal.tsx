@@ -5,17 +5,17 @@ import { PressableScale } from './PressableScale';
 
 interface LoseModalProps {
   visible: boolean;
-  level: number;
+  title: string;
   onRetry: () => void;
   onHome: () => void;
 }
 
-export function LoseModal({ visible, level, onRetry, onHome }: LoseModalProps) {
+export function LoseModal({ visible, title, onRetry, onHome }: LoseModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.title}>Niveau {level} raté</Text>
+          <Text style={styles.title}>{title}</Text>
           <Text style={styles.emoji}>🐱💔</Text>
           <Text style={styles.subtitle}>Plus de vies pour ce niveau</Text>
           <PressableScale style={styles.primaryButton} onPress={onRetry}>

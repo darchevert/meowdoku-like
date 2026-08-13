@@ -7,7 +7,7 @@ import { GameScreen } from './src/screens/GameScreen';
 import { SettingsModal } from './src/components/SettingsModal';
 import { colors } from './src/theme/colors';
 
-type Screen = 'home' | 'game';
+type Screen = 'home' | 'game' | 'daily';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
@@ -17,9 +17,10 @@ export default function App() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         {screen === 'home' ? (
-          <HomeScreen onPlay={() => setScreen('game')} />
+          <HomeScreen onPlay={() => setScreen('game')} onPlayDaily={() => setScreen('daily')} />
         ) : (
           <GameScreen
+            daily={screen === 'daily'}
             onBack={() => setScreen('home')}
             onSettings={() => setShowSettings(true)}
           />

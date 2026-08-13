@@ -8,10 +8,12 @@ const DELTAS: Array<[number, number]> = [
   [0, 1],
 ];
 
-function shuffled<T>(arr: T[]): T[] {
+type Rng = () => number;
+
+function shuffled<T>(arr: T[], rng: Rng): T[] {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
@@ -21,13 +23,13 @@ function shuffled<T>(arr: T[]): T[] {
  * consecutive rows sit within one column of each other (the "no touching,
  * including diagonally" rule). Cats in non-adjacent rows can never touch,
  * so only consecutive rows need checking. */
-function generateSolution(size: number): number[] | null {
+function generateSolution(size: number, rng: Rng): number[] | null {
   const usedCols = new Array<boolean>(size).fill(false);
   const solution = new Array<number>(size).fill(-1);
 
   function backtrack(row: number, prevCol: number): boolean {
     if (row === size) return true;
-    for (const col of shuffled(Array.from({ length: size }, (_, i) => i))) {
+    for (const col of shuffled(Array.from({ length: size }, (_, i) => i), rng)) {
       if (usedCols[col]) continue;
       if (prevCol >= 0 && Math.abs(col - prevCol) <= 1) continue;
       usedCols[col] = true;
@@ -44,7 +46,7 @@ function generateSolution(size: number): number[] | null {
 /** Grows `size` connected, irregularly-shaped regions outward from the
  * solution cells until they tile the whole board — a randomized
  * multi-source flood fill, similar to a Voronoi diagram with jitter. */
-function growRegions(size: number, solution: number[]): number[][] {
+function growRegions(size: number, solution: number[], rng: Rng): number[][] {
   const regions: number[][] = Array.from({ length: size }, () =>
     new Array<number>(size).fill(-1)
   );
@@ -70,7 +72,7 @@ function growRegions(size: number, solution: number[]): number[][] {
     // regions.
     const weights = activeRegions.map((r) => 1 / (cellCounts[r] + 2));
     const totalWeight = weights.reduce((a, b) => a + b, 0);
-    let pick = Math.random() * totalWeight;
+    let pick = rng() * totalWeight;
     let region = activeRegions[activeRegions.length - 1];
     for (let i = 0; i < activeRegions.length; i++) {
       pick -= weights[i];
@@ -80,11 +82,11 @@ function growRegions(size: number, solution: number[]): number[][] {
       }
     }
     const frontier = frontiers[region];
-    const idx = Math.floor(Math.random() * frontier.length);
+    const idx = Math.floor(rng() * frontier.length);
     const [row, col] = frontier[idx];
     frontier.splice(idx, 1);
 
-    for (const [dr, dc] of shuffled(DELTAS)) {
+    for (const [dr, dc] of shuffled(DELTAS, rng)) {
       const nr = row + dr;
       const nc = col + dc;
       if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
@@ -160,45 +162,85 @@ function isConnected(
  * on larger boards the space of alternate solutions can be large enough
  * that proving uniqueness gets expensive, so callers bound how long any
  * single repair attempt is allowed to run. */
+type RepairStepResult = 'unique' | 'repaired' | 'stuck';
+
+/** Runs a single repair pass in place: checks whether `regions` currently
+ * has a unique solution and, if not, tries to break exactly one alternate
+ * solution by reassigning a single boundary cell to a neighboring region
+ * (mutating `regions` on a 'repaired' result). Shared by the wall-clock
+ * (`tryRepairUniqueness`) and iteration-bounded (deterministic) repair
+ * loops below, which differ only in how they decide when to stop calling
+ * this. `deadline` is forwarded to the solver's search only — pass
+ * `undefined` for an exact, unbounded check. */
+function repairStep(
+  size: number,
+  regions: number[][],
+  solution: number[],
+  rng: Rng,
+  deadline?: number
+): RepairStepResult {
+  const solutions = findSolutions(size, regions, 2, deadline);
+  if (solutions.length <= 1) return 'unique';
+
+  const alt = solutions.find((s) => s.some((c, r) => c !== solution[r]));
+  if (!alt) return 'unique';
+
+  const rows = shuffled(Array.from({ length: size }, (_, i) => i), rng).filter(
+    (r) => alt[r] !== solution[r]
+  );
+
+  for (const row of rows) {
+    const altCol = alt[row];
+    const curReg = regions[row][altCol];
+
+    const neighborRegions = new Set<number>();
+    for (const [dr, dc] of DELTAS) {
+      const nr = row + dr;
+      const nc = altCol + dc;
+      if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+      if (regions[nr][nc] !== curReg) neighborRegions.add(regions[nr][nc]);
+    }
+    if (neighborRegions.size === 0) continue;
+    if (!isConnected(regions, size, curReg, [row, altCol])) continue;
+
+    const options = shuffled(Array.from(neighborRegions), rng);
+    regions[row][altCol] = options[0];
+    return 'repaired';
+  }
+
+  return 'stuck';
+}
+
 function tryRepairUniqueness(
   size: number,
   regions: number[][],
   solution: number[],
-  deadline: number
+  deadline: number,
+  rng: Rng
 ): boolean {
   while (Date.now() < deadline) {
-    const solutions = findSolutions(size, regions, 2, deadline);
-    if (solutions.length <= 1) return true;
+    const result = repairStep(size, regions, solution, rng, deadline);
+    if (result === 'unique') return true;
+    if (result === 'stuck') return false;
+  }
+  return false;
+}
 
-    const alt = solutions.find((s) => s.some((c, r) => c !== solution[r]));
-    if (!alt) return true;
-
-    const rows = shuffled(Array.from({ length: size }, (_, i) => i)).filter(
-      (r) => alt[r] !== solution[r]
-    );
-
-    let repaired = false;
-    for (const row of rows) {
-      const altCol = alt[row];
-      const curReg = regions[row][altCol];
-
-      const neighborRegions = new Set<number>();
-      for (const [dr, dc] of DELTAS) {
-        const nr = row + dr;
-        const nc = altCol + dc;
-        if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
-        if (regions[nr][nc] !== curReg) neighborRegions.add(regions[nr][nc]);
-      }
-      if (neighborRegions.size === 0) continue;
-      if (!isConnected(regions, size, curReg, [row, altCol])) continue;
-
-      const options = shuffled(Array.from(neighborRegions));
-      regions[row][altCol] = options[0];
-      repaired = true;
-      break;
-    }
-
-    if (!repaired) return false;
+/** Deterministic counterpart to `tryRepairUniqueness`: bounded by an
+ * iteration count instead of a wall-clock deadline, and each pass proves
+ * uniqueness exactly (no time-boxed partial search) — see
+ * `generatePuzzleDeterministic`'s doc comment for why. */
+function tryRepairUniquenessDeterministic(
+  size: number,
+  regions: number[][],
+  solution: number[],
+  rng: Rng,
+  maxIterations: number
+): boolean {
+  for (let i = 0; i < maxIterations; i++) {
+    const result = repairStep(size, regions, solution, rng);
+    if (result === 'unique') return true;
+    if (result === 'stuck') return false;
   }
   return false;
 }
@@ -218,17 +260,29 @@ function budgetForSize(size: number): number {
  * within the time budget; on the largest boards (roughly 12x12+) the
  * search space of alternate solutions can outgrow that budget, so
  * generation falls back to the best (typically still very constrained,
- * just not provably unique) layout found so far rather than blocking. */
-export function generatePuzzle(size: number): Puzzle {
+ * just not provably unique) layout found so far rather than blocking.
+ *
+ * `rng` defaults to `Math.random` but can be swapped for a seeded
+ * generator (see `utils/seededRandom.ts`). Note that a seeded rng alone
+ * does *not* make this call reproducible: `hasUniqueSolution`/
+ * `tryRepairUniqueness` below bail out on wall-clock deadlines, and which
+ * candidate layout ends up accepted can depend on real CPU timing, not
+ * just the rng sequence, whenever a check runs long enough to nearly hit
+ * its 150ms sub-budget. That's fine for interactive play (any valid,
+ * provably-unique board is as good as any other) but not for the daily
+ * challenge, which needs the exact same board on every device — see
+ * `generatePuzzleDeterministic` in `utils/dailyChallenge.ts`'s caller,
+ * which sidesteps this by never time-boxing its uniqueness checks. */
+export function generatePuzzle(size: number, rng: Rng = Math.random): Puzzle {
   const deadline = Date.now() + budgetForSize(size);
   let fallback: Puzzle | null = null;
 
   while (Date.now() < deadline) {
-    const solution = generateSolution(size);
+    const solution = generateSolution(size, rng);
     if (!solution) continue;
 
     while (Date.now() < deadline) {
-      const regions = growRegions(size, solution);
+      const regions = growRegions(size, solution, rng);
       const checkDeadline = Math.min(deadline, Date.now() + 150);
       if (hasUniqueSolution({ size, regions }, checkDeadline)) {
         return { size, regions, solution };
@@ -236,7 +290,7 @@ export function generatePuzzle(size: number): Puzzle {
       fallback = { size, regions, solution };
 
       const repairDeadline = Math.min(deadline, Date.now() + 150);
-      if (tryRepairUniqueness(size, regions, solution, repairDeadline)) {
+      if (tryRepairUniqueness(size, regions, solution, repairDeadline, rng)) {
         return { size, regions, solution };
       }
       fallback = { size, regions, solution };
@@ -245,4 +299,48 @@ export function generatePuzzle(size: number): Puzzle {
 
   if (fallback) return fallback;
   throw new Error(`Failed to generate a ${size}x${size} puzzle`);
+}
+
+// Random region growth on a fixed solution is only rarely unique on its
+// own for a 9x9 board (measured well under 10% of the time) — repair is
+// what makes most candidates usable, not a rare rescue. So the
+// deterministic path keeps it, just bounded by iteration counts instead
+// of wall-clock deadlines. Both bounds below are generous relative to
+// measured behavior: a repair attempt that's going to succeed almost
+// always does so within its first few passes, and a fresh candidate is
+// almost always either immediately unique or repairable well within
+// double digits of outer attempts.
+const DAILY_MAX_ATTEMPTS = 300;
+const DAILY_REPAIR_MAX_ITERATIONS = 60;
+
+/** Reproducible generation for the daily challenge: the same seed always
+ * produces the same board, on any device, at any time, forever — required
+ * since the puzzle is shared by every player on a given date and a retry
+ * after losing must land on the exact same board, not a new one.
+ *
+ * Structurally the same two-level search as `generatePuzzle` (fresh
+ * region layout, then repair it in place, then try a different layout if
+ * repair gets stuck) but with every bound expressed as an iteration count
+ * rather than a wall-clock deadline — a result that depends on real CPU
+ * timing anywhere in the loop is, by definition, not reproducible. Each
+ * `repairStep` call also runs its solver search to exact completion
+ * (`deadline: undefined`) instead of a time-boxed partial one — safe for
+ * a 9x9 board, where `generatePuzzle`'s own (much larger) size-scaled
+ * budget already comfortably proves uniqueness today. */
+export function generatePuzzleDeterministic(size: number, rng: Rng): Puzzle {
+  for (let attempt = 0; attempt < DAILY_MAX_ATTEMPTS; attempt++) {
+    const solution = generateSolution(size, rng);
+    if (!solution) continue;
+
+    const regions = growRegions(size, solution, rng);
+    if (hasUniqueSolution({ size, regions })) {
+      return { size, regions, solution };
+    }
+    if (tryRepairUniquenessDeterministic(size, regions, solution, rng, DAILY_REPAIR_MAX_ITERATIONS)) {
+      return { size, regions, solution };
+    }
+  }
+  throw new Error(
+    `Failed to find a unique ${size}x${size} puzzle within ${DAILY_MAX_ATTEMPTS} deterministic attempts`
+  );
 }

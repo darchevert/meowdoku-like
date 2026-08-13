@@ -52,7 +52,10 @@ progression (niveaux, score, série quotidienne, monnaie).
 - **Rituel de rétention** : l'écran "Touchez le soleil, allumez votre
   série !" est un mécanisme de streak quotidien classique (type Duolingo),
   qui ramène le joueur chaque jour indépendamment de la difficulté du
-  niveau en cours.
+  niveau en cours. Le défi quotidien (9×9, débloqué au niveau 21) est le
+  même mécanisme sous une autre forme : une seule tentative par jour, la
+  même grille pour tout le monde, qui donne une raison de revenir même
+  après avoir fini sa session de niveaux.
 - **Identité ludique et non punitive** : avatars/cadres à débloquer, thème
   chaton, palette pastel chaleureuse — le jeu reste accessible et "cosy"
   même quand le puzzle devient dur.
@@ -61,7 +64,7 @@ progression (niveaux, score, série quotidienne, monnaie).
 
 | Écran | Éléments identifiés |
 |---|---|
-| **Accueil** | Logo "MEOWDOKU", bouton avatar (haut gauche), bouton réglages (haut droit), carte "Défi quotidien" (verrouillée jusqu'au niveau 21), carte "Série" (streak), bouton "Niveau N" |
+| **Accueil** | Logo "MEOWDOKU", bouton avatar (haut gauche), bouton réglages (haut droit), carte "Défi quotidien" (🔒 avant le niveau 21, 🎯 débloquée, ✅ si déjà réussie aujourd'hui), carte "Série" (streak), bouton "Niveau N" |
 | **Partie** | Barre du haut (retour / Niveau / Score / réglages), badge de progression 🐱 x/N, badge vies 🐟 (3 par niveau), 3 cartes de règles, grille de jeu, deux boutons de power-up (🐱 auto-placement, 💡 indice) avec compteur de charges |
 | **Profil** | Avatar + identifiant joueur, onglets Avatar/Cadre, grille de sélection, bouton Confirmer |
 | **Série quotidienne** | Soleil à toucher, compteur de jours, message de confirmation |
@@ -114,6 +117,38 @@ progression (niveaux, score, série quotidienne, monnaie).
 - Les power-ups (🐱 auto-placement, 💡 indice) restent des raccourcis
   payants (poissons 🐟 de la monnaie du joueur) qui ne coûtent jamais de
   vie.
+
+### Défi quotidien et série
+
+Les deux mécanismes de rétention quotidienne sont pleinement fonctionnels :
+
+- **Série** ("Touchez le soleil...") : un tap par jour sur le soleil
+  incrémente la série si le dernier tap datait d'hier, sinon la remet à 1.
+  Persistée (`streak`, `bestStreak`, `lastStreakClaimDate`) via
+  `AsyncStorage`.
+- **Défi quotidien** : débloqué au niveau 21 (carte "Défi quotidien" sur
+  l'accueil, verrouillée 🔒 avant, cible 🎯 après). C'est une grille 9×9
+  **identique pour tous les joueurs** un jour donné, générée par une seed
+  dérivée de la date (`utils/dailyChallenge.ts` + `utils/seededRandom.ts`,
+  un PRNG mulberry32 seedé par un hash de `YYYY-MM-DD`). Une seule
+  tentative comptée par jour ; réussir marque
+  `dailyChallengeCompletedDate` à aujourd'hui (le ✅ remplace le 🎯 sur
+  l'accueil) et rapporte 10 🐟 plus un score, sans faire avancer le niveau
+  du joueur. Réessayer après un échec régénère *la même* grille (seed
+  identique), pas une nouvelle. Une fois le défi du jour réussi, rouvrir
+  la carte affiche un écran "déjà réussi" à la place de la grille plutôt
+  que de permettre une deuxième tentative.
+  - **Piège de déterminisme évité** : `generatePuzzle` (utilisé pour les
+    niveaux normaux) borde sa recherche d'unicité par une échéance
+    d'horloge murale (`Date.now()`), ce qui la rend rapide pour jouer mais
+    *non reproductible* — avec la même seed, deux exécutions peuvent
+    tomber sur un résultat différent selon le temps CPU réellement
+    écoulé (vérifié empiriquement : ce n'était pas qu'un risque
+    théorique). Le défi quotidien utilise donc
+    `generatePuzzleDeterministic`, une variante qui ne borne jamais rien
+    par le temps — seulement par un nombre de tentatives — pour que le
+    résultat ne dépende que de la seed, jamais de la machine ou du
+    moment de génération.
 
 ## 2. Choix techniques
 
@@ -215,13 +250,11 @@ npx eas-cli build --platform android
 
 ## 5. Limites connues / pistes d'évolution
 
-- Pas de backend : la progression est locale à l'appareil (`AsyncStorage`).
-- Pas de sons/musique ni de vraies illustrations d'avatars (emojis à la
-  place), pour rester dans un scope raisonnable et éviter de reproduire des
-  assets protégés.
-- Le défi quotidien n'est pas encore implémenté au-delà du déverrouillage
-  affiché (structure prête dans `levelConfig.ts` via
-  `DAILY_CHALLENGE_UNLOCK_LEVEL`).
+- Pas de backend : la progression, la série et le défi quotidien sont
+  locaux à l'appareil (`AsyncStorage`) — pas de classement partagé ni de
+  compte joueur multi-appareil.
+- Pas de vraies illustrations d'avatars (emojis à la place), pour rester
+  dans un scope raisonnable et éviter de reproduire des assets protégés.
 - Le solveur d'indice se contente de révéler une cellule de la solution
   connue ; un vrai moteur de déduction logique (façon "seule case possible
   dans cette région") serait une amélioration naturelle.

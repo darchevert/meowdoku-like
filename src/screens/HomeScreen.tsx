@@ -11,12 +11,14 @@ import { MAX_CONTENT_WIDTH } from '../theme/layout';
 
 interface HomeScreenProps {
   onPlay: () => void;
+  onPlayDaily: () => void;
 }
 
-export function HomeScreen({ onPlay }: HomeScreenProps) {
+export function HomeScreen({ onPlay, onPlayDaily }: HomeScreenProps) {
   const level = useGameStore((s) => s.level);
   const avatar = useGameStore((s) => s.avatar);
   const streak = useGameStore((s) => s.streak);
+  const dailyDoneToday = useGameStore((s) => s.hasCompletedDailyToday());
   const [showProfile, setShowProfile] = useState(false);
   const [showStreak, setShowStreak] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -36,10 +38,14 @@ export function HomeScreen({ onPlay }: HomeScreenProps) {
         </View>
 
         <View style={styles.cardsRow}>
-          <View style={[styles.card, styles.dailyCard]}>
+          <PressableScale
+            style={[styles.card, styles.dailyCard]}
+            onPress={onPlayDaily}
+            disabled={!dailyUnlocked}
+          >
             <Text style={styles.cardTitle}>Défi{'\n'}quotidien</Text>
             {dailyUnlocked ? (
-              <Text style={styles.cardIcon}>🎯</Text>
+              <Text style={styles.cardIcon}>{dailyDoneToday ? '✅' : '🎯'}</Text>
             ) : (
               <>
                 <Text style={styles.lockIcon}>🔒</Text>
@@ -48,7 +54,7 @@ export function HomeScreen({ onPlay }: HomeScreenProps) {
                 </Text>
               </>
             )}
-          </View>
+          </PressableScale>
 
           <PressableScale style={[styles.card, styles.streakCard]} onPress={() => setShowStreak(true)}>
             <Text style={[styles.cardTitle, styles.streakTitle]}>Série</Text>
