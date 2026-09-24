@@ -77,7 +77,7 @@ export function WinModal({
           {elapsedSeconds !== undefined && (
             <Text style={styles.timeText}>
               Temps : {formatTime(elapsedSeconds)}
-              {isNewRecord ? ' — 🏆 Nouveau record !' : ''}
+              {isNewRecord ? ' · 🏆 Nouveau record !' : ''}
             </Text>
           )}
           <PressableScale style={styles.primaryButton} onPress={onPrimary}>
