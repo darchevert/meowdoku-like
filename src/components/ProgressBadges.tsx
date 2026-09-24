@@ -3,8 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 
 interface ProgressBadgesProps {
-  catsPlaced: number;
-  catsTotal: number;
+  zombiesPlaced: number;
+  zombiesTotal: number;
   lives: number;
   maxLives: number;
   /** Replaces the lives pill with a "no stakes" badge — used for zen-mode
@@ -12,13 +12,13 @@ interface ProgressBadgesProps {
   zen?: boolean;
 }
 
-export function ProgressBadges({ catsPlaced, catsTotal, lives, maxLives, zen }: ProgressBadgesProps) {
+export function ProgressBadges({ zombiesPlaced, zombiesTotal, lives, maxLives, zen }: ProgressBadgesProps) {
   return (
     <View style={styles.row}>
       <View style={styles.pill}>
-        <Text style={styles.emoji}>🐱</Text>
+        <Text style={styles.emoji}>🧟</Text>
         <Text style={styles.count}>
-          {catsPlaced}/{catsTotal}
+          {zombiesPlaced}/{zombiesTotal}
         </Text>
       </View>
       {zen ? (
@@ -29,8 +29,8 @@ export function ProgressBadges({ catsPlaced, catsTotal, lives, maxLives, zen }: 
       ) : (
         <View style={styles.pill}>
           {Array.from({ length: maxLives }).map((_, i) => (
-            <Text key={i} style={[styles.fish, i >= lives && styles.fishLost]}>
-              🐟
+            <Text key={i} style={[styles.brain, i >= lives && styles.brainLost]}>
+              🧠
             </Text>
           ))}
         </View>
@@ -57,10 +57,10 @@ const styles = StyleSheet.create({
   emoji: {
     fontSize: 16,
   },
-  fish: {
+  brain: {
     fontSize: 16,
   },
-  fishLost: {
+  brainLost: {
     opacity: 0.2,
   },
   count: {

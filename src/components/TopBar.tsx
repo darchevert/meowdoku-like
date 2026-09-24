@@ -59,11 +59,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statLabel: {
-    color: colors.inkSoft,
+    color: 'rgba(245, 241, 230, 0.65)',
     fontSize: 15,
   },
   statValue: {
-    color: colors.ink,
+    color: colors.surface,
     fontSize: 26,
     fontWeight: '700',
   },

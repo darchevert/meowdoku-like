@@ -26,7 +26,7 @@ export default function App() {
           />
         )}
         <SettingsModal visible={showSettings} onClose={() => setShowSettings(false)} />
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
       </SafeAreaView>
     </SafeAreaProvider>
   );

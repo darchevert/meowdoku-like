@@ -1,8 +1,19 @@
-# Meowdoku-like
+# Zombidoku
 
-Une recréation de **Meowdoku** (jeu mobile de puzzle logique avec des chats),
-jouable sur **iOS**, **Android** et **Web** à partir d'une seule base de code
-(Expo / React Native + React Native Web).
+Une recréation d'un jeu mobile de puzzle logique à la **Meowdoku**, jouable
+sur **iOS**, **Android** et **Web** à partir d'une seule base de code (Expo /
+React Native + React Native Web).
+
+**Note sur le thème** : le prototype initial reprenait fidèlement le thème
+chat de Meowdoku (voir l'analyse ci-dessous, conservée telle quelle pour la
+traçabilité). Le jeu a ensuite été rebaptisé **Zombidoku** et entièrement
+rethémé — palette nuit/vert toxique, mascotte zombie, monnaie "cerveaux" 🧠,
+streak "nuits survécues" 🌙 — pour se différencier visuellement de
+l'original et donner un ressort comique propre à la règle du jeu ("les
+zombies ne se touchent pas... ou ils se multiplient"). Toutes les mécaniques
+de puzzle (§1) restent identiques ; seuls l'habillage et les noms ont changé
+(détaillés en §1 sous "Compagnon, mode Zen, mode chrono, publicités
+récompensées" et dans la table des écrans).
 
 ## 1. Analyse du jeu original
 
@@ -37,38 +48,38 @@ progression (niveaux, score, série quotidienne, monnaie).
   formule qui a rendu Queens viral.
 - **Feedback immédiat, avec un vrai enjeu** : un tap simple ne fait que
   noter/effacer une exclusion (✕), sans risque — c'est l'espace pour
-  déduire. Un double-tap engage réellement un chat sur la case : correct,
+  déduire. Un double-tap engage réellement un zombie sur la case : correct,
   il se pose ; incorrect, la case est marquée ✕ (on sait maintenant que ce
-  n'est pas là) et coûte une vie 🐟 parmi les 3 disponibles par niveau. Ce
+  n'est pas là) et coûte une vie 🧠 parmi les 3 disponibles par niveau. Ce
   découplage "noter sans risque / valider avec risque" est ce qui rend la
   logique déductive gratifiante plutôt que punitive.
 - **Difficulté progressive lisible** : la grille grandit avec le niveau
   (4×4 → 16×16 dans cette recréation, chaque palier de taille durant un
   niveau de plus que le précédent), donnant une sensation de progression
   sans changer les règles.
-- **Boucle de méta-jeu courte** : score cumulé, poissons 🐟 (monnaie) et
-  power-ups (chat auto-placé, ampoule d'indice) créent une petite économie
+- **Boucle de méta-jeu courte** : score cumulé, cerveaux 🧠 (monnaie) et
+  power-ups (zombie auto-placé, ampoule d'indice) créent une petite économie
   qui récompense la persévérance sans bloquer la partie.
-- **Rituel de rétention** : l'écran "Touchez le soleil, allumez votre
-  série !" est un mécanisme de streak quotidien classique (type Duolingo),
+- **Rituel de rétention** : l'écran "Touchez la lune, survivez à la
+  nuit !" est un mécanisme de streak quotidien classique (type Duolingo),
   qui ramène le joueur chaque jour indépendamment de la difficulté du
   niveau en cours. Le défi quotidien (9×9, débloqué au niveau 21) est le
   même mécanisme sous une autre forme : une seule tentative par jour, la
   même grille pour tout le monde, qui donne une raison de revenir même
   après avoir fini sa session de niveaux.
 - **Identité ludique et non punitive** : avatars/cadres à débloquer, thème
-  chaton, palette pastel chaleureuse — le jeu reste accessible et "cosy"
+  nocturne un peu absurde, palette nuit/vert toxique — le jeu reste accessible et "cosy"
   même quand le puzzle devient dur.
 
 ### Écrans reconstitués
 
 | Écran | Éléments identifiés |
 |---|---|
-| **Accueil** | Logo "MEOWDOKU", bouton avatar (haut gauche), bouton réglages (haut droit), carte "Défi quotidien" (🔒 avant le niveau 21, 🎯 débloquée, ✅ si déjà réussie aujourd'hui), carte "Série" (streak), bannière compagnon (emoji + XP + accessoire équipé), bouton "Niveau N" |
-| **Partie** | Barre du haut (retour / Niveau / Score / réglages), badge de progression 🐱 x/N, badge vies 🐟 (3 par niveau) ou badge 🧘 Zen, chronomètre optionnel, 3 cartes de règles, grille de jeu, boutons de power-up (↩ annuler, 🐱 auto-placement, 💡 indice, 📺 pub — natif uniquement) |
+| **Accueil** | Logo "ZOMBIDOKU", bouton avatar (haut gauche), bouton réglages (haut droit), carte "Alerte zombie" (🔒 avant le niveau 21, 🎯 débloquée, ✅ si déjà réussie aujourd'hui), carte "Nuits" (streak), bannière compagnon (emoji + XP + accessoire équipé), bouton "Niveau N" |
+| **Partie** | Barre du haut (retour / Niveau / Score / réglages), badge de progression 🧟 x/N, badge vies 🧠 (3 par niveau) ou badge 🧘 Zen, chronomètre optionnel, 3 cartes de règles, grille de jeu, boutons de power-up (↩ annuler, 🧟 auto-placement, 💡 indice, 📺 pub — natif uniquement) |
 | **Profil** | Avatar + identifiant joueur, onglets Avatar/Cadre, grille de sélection, bouton Confirmer |
-| **Compagnon** | Chat + accessoire équipé, barre de progression XP, bouton "Nourrir", grille d'accessoires (déblocable/équipable) |
-| **Série quotidienne** | Soleil à toucher, compteur de jours, message de confirmation |
+| **Compagnon** | Zombie + accessoire équipé, barre de progression XP, bouton "Nourrir", grille d'accessoires (déblocable/équipable) |
+| **Série quotidienne** | Lune à toucher, compteur de nuits, message de confirmation |
 | **Réglages** | Sons, Musique, Vibrations, Mode Zen, Mode chrono |
 
 ### Interaction sur la grille
@@ -89,24 +100,24 @@ progression (niveaux, score, série quotidienne, monnaie).
   capte et continue de lui envoyer les événements même quand le doigt
   glisse sur des cases voisines, donc des `Pressable` individuels ne
   verraient jamais un glissement commencé ailleurs.
-- **Double-tap** : engage un chat sur la case. S'il y a effectivement un
-  chat à cet endroit dans la solution, il se pose (🐱). Sinon, la case
+- **Double-tap** : engage un zombie sur la case. S'il y a effectivement un
+  zombie à cet endroit dans la solution, il se pose (🧟). Sinon, la case
   reçoit une ✕ **rouge, définitive** — elle ne peut plus jamais être
   modifiée, ni par un tap simple ni par un nouveau double-tap — et le
   joueur perd une vie parmi les 3 disponibles pour ce niveau (affichées en
-  🐟 en haut de l'écran). L'erreur déclenche aussi une petite vibration
+  🧠 en haut de l'écran). L'erreur déclenche aussi une petite vibration
   (haptique, désactivable dans les réglages) et une légère secousse de
   l'écran. À 0 vie, le niveau est raté et propose de réessayer (nouvelle
   grille de la même taille) ou de retourner à l'accueil.
 - **Bruitages** (désactivables via "Sons" dans les réglages) : un bref
-  carillon montant quand un chat est correctement placé, un double bip
+  carillon montant quand un zombie est correctement placé, un double bip
   grave quand un double-tap est faux, un arpège joyeux à la victoire du
   niveau, une petite descente triste à 0 vie. Les 4 sons sont synthétisés
   directement en PCM par `scripts/generate-sounds.mjs` (voir §3) plutôt
   que des fichiers audio tiers, pour ne rien dépendre d'assets sous
   licence.
-- **Célébration** : un chat correctement deviné (par double-tap, pas par
-  le raccourci 🐱 payant) fait apparaître brièvement "👏 Excellent ! 👏" (ou
+- **Célébration** : un zombie correctement deviné (par double-tap, pas par
+  le raccourci 🧟 payant) fait apparaître brièvement "👏 Excellent ! 👏" (ou
   Génial/Incroyable/Bravo/Parfait/Superbe, choisi au hasard) juste
   au-dessus de la grille.
 - **Révélation du niveau** : à l'arrivée sur un niveau (ou au
@@ -116,26 +127,26 @@ progression (niveaux, score, série quotidienne, monnaie).
   modales) rétrécissent légèrement au toucher et rebondissent au
   relâchement (`PressableScale`), au lieu du simple changement d'opacité
   par défaut.
-- Les power-ups (🐱 auto-placement, 💡 indice) restent des raccourcis
-  payants (poissons 🐟 de la monnaie du joueur) qui ne coûtent jamais de
+- Les power-ups (🧟 auto-placement, 💡 indice) restent des raccourcis
+  payants (cerveaux 🧠 de la monnaie du joueur) qui ne coûtent jamais de
   vie.
 
 ### Défi quotidien et série
 
 Les deux mécanismes de rétention quotidienne sont pleinement fonctionnels :
 
-- **Série** ("Touchez le soleil...") : un tap par jour sur le soleil
+- **Série** ("Touchez la lune...") : un tap par jour sur la lune
   incrémente la série si le dernier tap datait d'hier, sinon la remet à 1.
   Persistée (`streak`, `bestStreak`, `lastStreakClaimDate`) via
   `AsyncStorage`.
-- **Défi quotidien** : débloqué au niveau 21 (carte "Défi quotidien" sur
+- **Défi quotidien** : débloqué au niveau 21 (carte "Alerte zombie" sur
   l'accueil, verrouillée 🔒 avant, cible 🎯 après). C'est une grille 9×9
   **identique pour tous les joueurs** un jour donné, générée par une seed
   dérivée de la date (`utils/dailyChallenge.ts` + `utils/seededRandom.ts`,
   un PRNG mulberry32 seedé par un hash de `YYYY-MM-DD`). Une seule
   tentative comptée par jour ; réussir marque
   `dailyChallengeCompletedDate` à aujourd'hui (le ✅ remplace le 🎯 sur
-  l'accueil) et rapporte 10 🐟 plus un score, sans faire avancer le niveau
+  l'accueil) et rapporte 10 🧠 plus un score, sans faire avancer le niveau
   du joueur. Réessayer après un échec régénère *la même* grille (seed
   identique), pas une nouvelle. Une fois le défi du jour réussi, rouvrir
   la carte affiche un écran "déjà réussi" à la place de la grille plutôt
@@ -155,9 +166,9 @@ Les deux mécanismes de rétention quotidienne sont pleinement fonctionnels :
 ### Compagnon, mode Zen, mode chrono, publicités récompensées
 
 - **Compagnon persistant** (`utils/companion.ts`, `CompanionModal.tsx`) —
-  la fonctionnalité différenciante : un chat qu'on nourrit avec les
-  poissons 🐟 (2 🐟 → +10 XP), qui monte de niveau et change d'emoji à
-  travers 6 paliers (🐱 → 😺 → 😸 → 😻 → 🐈 → 🦁), plus 5 accessoires
+  la fonctionnalité différenciante : un zombie qu'on nourrit avec les
+  cerveaux 🧠 (2 🧠 → +10 XP), qui monte de niveau et change d'emoji à
+  travers 6 paliers (🧟 → 🧟‍♂️ → 🧟‍♀️ → 👹 → 👺 → 🧌), plus 5 accessoires
   cosmétiques déblocables et équipables (nœud, lunettes, écharpe, fleur,
   couronne) affichés à côté du compagnon. Bannière tappable sur l'accueil,
   écran complet en modale. Ça donne une utilité à la monnaie au-delà du
@@ -202,10 +213,11 @@ toute la logique de puzzle.
 - **Aucune dépendance de navigation lourde** : l'app est volontairement
   simple (Accueil ↔ Partie + modales), un switch d'écran en state React
   suffit et reste trivial à auditer.
-- **Pas d'assets graphiques propriétaires** : les chats/avatars utilisent
+- **Pas d'assets graphiques propriétaires** : les zombies/avatars utilisent
   des emojis et des formes vectorielles simples, pour ne pas reproduire les
-  illustrations protégées du jeu original tout en gardant le même esprit
-  visuel (fond crème, accents bruns/orangés, cartes arrondies).
+  illustrations protégées du jeu original tout en gardant une identité
+  visuelle propre (fond nuit violette, accents vert toxique/jaune lune,
+  cartes arrondies).
 
 ## 3. Structure du projet
 
@@ -238,7 +250,7 @@ scripts/
 ### Génération de puzzle (`src/engine/generator.ts`)
 
 1. **Solution** : backtracking aléatoire qui place une permutation de
-   colonnes (une par ligne) telle que deux chats sur des lignes
+   colonnes (une par ligne) telle que deux zombies sur des lignes
    consécutives ne soient jamais à une colonne de distance ≤ 1 (seules les
    lignes consécutives peuvent se toucher, donc c'est la seule contrainte à
    vérifier).

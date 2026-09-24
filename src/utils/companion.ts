@@ -1,7 +1,8 @@
-/** The persistent companion: fed with fish (a use for the currency beyond
- * the hint/auto-cat shop), it gains XP and visibly evolves — a reason to
- * keep playing that isn't just "the next level," and the game's answer to
- * "what makes this different from every other Star Battle clone." */
+/** The persistent companion: fed with brains (a use for the currency
+ * beyond the hint/auto-cat shop), it gains XP and visibly evolves — a
+ * reason to keep playing that isn't just "the next level," and the
+ * game's answer to "what makes this different from every other Star
+ * Battle clone." */
 
 const XP_PER_LEVEL = 50;
 
@@ -12,12 +13,12 @@ export interface CompanionTier {
 }
 
 export const COMPANION_TIERS: CompanionTier[] = [
-  { level: 1, emoji: '🐱', name: 'Chaton' },
-  { level: 2, emoji: '😺', name: 'Chat curieux' },
-  { level: 3, emoji: '😸', name: 'Chat joueur' },
-  { level: 4, emoji: '😻', name: 'Chat comblé' },
-  { level: 5, emoji: '🐈', name: 'Chat élégant' },
-  { level: 6, emoji: '🦁', name: 'Chat royal' },
+  { level: 1, emoji: '🧟', name: 'Zombie débutant' },
+  { level: 2, emoji: '🧟‍♂️', name: 'Zombie qui titube' },
+  { level: 3, emoji: '🧟‍♀️', name: 'Zombie affamé' },
+  { level: 4, emoji: '👹', name: 'Ogre nocturne' },
+  { level: 5, emoji: '👺', name: 'Démon du cimetière' },
+  { level: 6, emoji: '🧌', name: 'Seigneur zombie' },
 ];
 
 export function companionLevel(xp: number): number {

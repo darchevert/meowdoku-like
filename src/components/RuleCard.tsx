@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 
-type MiniCell = 'x' | 'cat' | 'blank';
+type MiniCell = 'x' | 'zombie' | 'blank';
 
 interface RuleCardProps {
   grid: MiniCell[][];
@@ -17,7 +17,7 @@ export function RuleCard({ grid, text }: RuleCardProps) {
           <View key={r} style={styles.miniRow}>
             {row.map((cell, c) => (
               <View key={c} style={styles.miniCell}>
-                {cell === 'cat' && <Text style={styles.miniCat}>🐱</Text>}
+                {cell === 'zombie' && <Text style={styles.miniZombie}>🧟</Text>}
                 {cell === 'x' && <Text style={styles.miniX}>✕</Text>}
               </View>
             ))}
@@ -31,26 +31,26 @@ export function RuleCard({ grid, text }: RuleCardProps) {
 
 const RULE_ONE_PER_COLOR: MiniCell[][] = [
   ['x', 'x', 'x'],
-  ['x', 'cat', 'x'],
+  ['x', 'zombie', 'x'],
   ['x', 'blank', 'blank'],
 ];
 const RULE_ONE_PER_LINE: MiniCell[][] = [
-  ['x', 'x', 'cat'],
-  ['x', 'cat', 'x'],
-  ['cat', 'x', 'x'],
+  ['x', 'x', 'zombie'],
+  ['x', 'zombie', 'x'],
+  ['zombie', 'x', 'x'],
 ];
 const RULE_NO_TOUCH: MiniCell[][] = [
   ['x', 'x', 'x'],
-  ['x', 'cat', 'x'],
+  ['x', 'zombie', 'x'],
   ['x', 'x', 'x'],
 ];
 
 export function RuleCards() {
   return (
     <View style={styles.row}>
-      <RuleCard grid={RULE_ONE_PER_COLOR} text={'1 chat par\ncouleur'} />
-      <RuleCard grid={RULE_ONE_PER_LINE} text={'1 chat par\nligne et colonne'} />
-      <RuleCard grid={RULE_NO_TOUCH} text={'Les chats ne\npeuvent pas se toucher'} />
+      <RuleCard grid={RULE_ONE_PER_COLOR} text={'1 zombie par\ncimetière'} />
+      <RuleCard grid={RULE_ONE_PER_LINE} text={'1 zombie par\nligne et colonne'} />
+      <RuleCard grid={RULE_NO_TOUCH} text={'Ils ne se touchent pas,\nsinon ils se multiplient !'} />
     </View>
   );
 }
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     margin: 0.5,
     borderRadius: 2,
   },
-  miniCat: {
+  miniZombie: {
     fontSize: 8,
   },
   miniX: {

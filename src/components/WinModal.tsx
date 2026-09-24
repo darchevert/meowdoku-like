@@ -7,7 +7,7 @@ interface WinModalProps {
   visible: boolean;
   title: string;
   scoreEarned: number;
-  fishEarned: number;
+  brainsEarned: number;
   primaryLabel: string;
   onPrimary: () => void;
   /** Omit to show only the primary button (e.g. the daily challenge,
@@ -29,7 +29,7 @@ export function WinModal({
   visible,
   title,
   scoreEarned,
-  fishEarned,
+  brainsEarned,
   primaryLabel,
   onPrimary,
   secondaryLabel,
@@ -42,10 +42,10 @@ export function WinModal({
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.emoji}>🐱🎉</Text>
+          <Text style={styles.emoji}>🧟🎉</Text>
           <View style={styles.rewardsRow}>
             <Text style={styles.reward}>+{scoreEarned} points</Text>
-            <Text style={styles.reward}>+{fishEarned} 🐟</Text>
+            <Text style={styles.reward}>+{brainsEarned} 🧠</Text>
           </View>
           {elapsedSeconds !== undefined && (
             <Text style={styles.timeText}>
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 17,
     fontWeight: '700',
   },

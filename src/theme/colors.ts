@@ -1,31 +1,34 @@
-/** Warm cream palette matching the reference screenshots: soft beige
- * background, brown ink text, orange call-to-action. */
+/** Graveyard-at-night palette for the Zombidoku theme: deep plum sky,
+ * bone/parchment cards for contrast, toxic green as the primary accent,
+ * moonlight yellow as the secondary one. */
 export const colors = {
-  background: '#F7E9DA',
-  surface: '#FFFFFF',
-  surfaceMuted: '#F3E3D3',
-  ink: '#6B4630',
-  inkSoft: '#8A6A55',
-  accent: '#F0932B',
-  accentDark: '#D97706',
+  background: '#241B33',
+  surface: '#F5F1E6',
+  surfaceMuted: '#E8E0CC',
+  ink: '#2A2140',
+  inkSoft: '#6B5F7D',
+  accent: '#8BC34A',
+  accentDark: '#6B9B2F',
+  accentSecondary: '#F0C23E',
   success: '#3FA55A',
   danger: '#E0554F',
-  cardShadow: 'rgba(107, 70, 48, 0.15)',
+  cardShadow: 'rgba(20, 10, 30, 0.35)',
 } as const;
 
-/** Palette for puzzle regions. Chosen to be distinguishable at a glance
- * (including for common forms of color-blindness) at up to 10 regions. */
+/** Palette for puzzle regions ("cimetières"). Chosen to be distinguishable
+ * at a glance (including for common forms of color-blindness) at up to 10
+ * regions, while staying in the graveyard-at-night family. */
 export const regionPalette = [
-  '#F4C15C', // gold
-  '#F2A0C4', // pink
-  '#8E86D6', // periwinkle
-  '#4FA97B', // green
-  '#C98A5E', // brown/tan
-  '#63B3D6', // sky blue
-  '#E6725A', // coral
-  '#B6C24C', // olive
-  '#9C6FC9', // violet
-  '#5CC7B8', // teal
+  '#8BC34A', // toxic green
+  '#6B4F7D', // deep purple
+  '#D97757', // pumpkin
+  '#4F7DC9', // moonlit blue
+  '#C9A66B', // grave dirt
+  '#7DC9A6', // swamp teal
+  '#C96B8A', // bruise pink
+  '#A6C96B', // olive slime
+  '#F0C23E', // moon yellow
+  '#8A6BC9', // violet fog
 ] as const;
 
 export function regionColor(regionId: number): string {

@@ -10,10 +10,10 @@ interface CompanionModalProps {
   onClose: () => void;
 }
 
-const FEED_COST_FISH = 2;
+const FEED_COST_BRAINS = 2;
 
 export function CompanionModal({ visible, onClose }: CompanionModalProps) {
-  const fish = useGameStore((s) => s.fish);
+  const brains = useGameStore((s) => s.brains);
   const companionXp = useGameStore((s) => s.companionXp);
   const unlockedAccessories = useGameStore((s) => s.unlockedAccessories);
   const equippedAccessory = useGameStore((s) => s.equippedAccessory);
@@ -47,11 +47,11 @@ export function CompanionModal({ visible, onClose }: CompanionModalProps) {
             </View>
 
             <PressableScale
-              style={[styles.feedButton, fish < FEED_COST_FISH && styles.feedButtonDisabled]}
+              style={[styles.feedButton, brains < FEED_COST_BRAINS && styles.feedButtonDisabled]}
               onPress={feedCompanion}
-              disabled={fish < FEED_COST_FISH}
+              disabled={brains < FEED_COST_BRAINS}
             >
-              <Text style={styles.feedButtonText}>Nourrir · {FEED_COST_FISH} 🐟</Text>
+              <Text style={styles.feedButtonText}>Nourrir · {FEED_COST_BRAINS} 🧠</Text>
             </PressableScale>
           </View>
 
@@ -76,7 +76,7 @@ export function CompanionModal({ visible, onClose }: CompanionModalProps) {
                     {item.emoji}
                   </Text>
                   <Text style={styles.gridLabel}>
-                    {unlocked ? item.name : `${item.cost} 🐟`}
+                    {unlocked ? item.name : `${item.cost} 🧠`}
                   </Text>
                   {equipped && (
                     <View style={styles.checkBadge}>
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 380,
     maxHeight: '85%',
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 20,
   },
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   feedButtonText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 15,
     fontWeight: '700',
   },

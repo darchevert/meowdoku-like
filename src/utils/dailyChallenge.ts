@@ -9,15 +9,15 @@ import { hashStringToSeed, mulberry32 } from './seededRandom';
  * (see DAILY_CHALLENGE_UNLOCK_LEVEL in levelConfig.ts). */
 export const DAILY_CHALLENGE_SIZE = 9;
 
-/** Bigger than a regular level's flat reward (see FISH_REWARD in
+/** Bigger than a regular level's flat reward (see BRAIN_REWARD in
  * GameScreen) since there's only one shot at it per day. */
-export const DAILY_CHALLENGE_FISH_REWARD = 10;
+export const DAILY_CHALLENGE_BRAIN_REWARD = 10;
 
 /** Same puzzle for every player on a given calendar day (UTC): the board
  * is generated with a PRNG seeded from the date string instead of
  * Math.random, so it comes out byte-for-byte identical wherever and
  * whenever it's generated that day — including on a retry after losing. */
 export function generateDailyPuzzle(dateKey: string = todayKey()): Puzzle {
-  const seed = hashStringToSeed(`meowdoku-daily-${dateKey}`);
+  const seed = hashStringToSeed(`zombidoku-daily-${dateKey}`);
   return generatePuzzleDeterministic(DAILY_CHALLENGE_SIZE, mulberry32(seed));
 }

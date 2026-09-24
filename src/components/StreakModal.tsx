@@ -17,7 +17,7 @@ export function StreakModal({ visible, onClose }: StreakModalProps) {
 
   const alreadyClaimedToday = !canClaimStreak();
 
-  function handleTapSun() {
+  function handleTapMoon() {
     if (alreadyClaimedToday) {
       onClose();
       return;
@@ -35,20 +35,24 @@ export function StreakModal({ visible, onClose }: StreakModalProps) {
       onDismiss={() => setClaimed(false)}
     >
       <Pressable style={styles.backdrop} onPress={claimed ? onClose : undefined}>
+        <Text style={styles.star1}>✦</Text>
+        <Text style={styles.star2}>✦</Text>
+        <Text style={styles.star3}>✦</Text>
+
         <View style={styles.dayBadge}>
           <Text style={styles.dayNumber}>{streak + (claimed ? 0 : 1)}</Text>
         </View>
 
-        <PressableScale style={styles.sunWrap} scaleTo={0.88} onPress={handleTapSun}>
-          <Text style={styles.sun}>☀️</Text>
+        <PressableScale style={styles.moonWrap} scaleTo={0.88} onPress={handleTapMoon}>
+          <Text style={styles.moon}>🌙</Text>
         </PressableScale>
 
         <Text style={styles.caption}>
           {claimed
-            ? `Série de ${streak} jour${streak > 1 ? 's' : ''} !`
+            ? `${streak} nuit${streak > 1 ? 's' : ''} survécue${streak > 1 ? 's' : ''} !`
             : alreadyClaimedToday
-            ? 'Série déjà allumée aujourd’hui'
-            : 'Touchez le soleil, allumez\nvotre série !'}
+            ? 'Nuit déjà survécue aujourd’hui'
+            : 'Touchez la lune,\nsurvivez à la nuit !'}
         </Text>
 
         {claimed && (
@@ -64,11 +68,35 @@ export function StreakModal({ visible, onClose }: StreakModalProps) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: '#FBEFD9',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 24,
     padding: 24,
+  },
+  star1: {
+    position: 'absolute',
+    top: 90,
+    left: 48,
+    color: colors.accentSecondary,
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  star2: {
+    position: 'absolute',
+    top: 150,
+    right: 64,
+    color: colors.accentSecondary,
+    fontSize: 10,
+    opacity: 0.5,
+  },
+  star3: {
+    position: 'absolute',
+    bottom: 140,
+    left: 70,
+    color: colors.accentSecondary,
+    fontSize: 12,
+    opacity: 0.6,
   },
   dayBadge: {
     position: 'absolute',
@@ -81,16 +109,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.accent,
   },
-  sunWrap: {
+  moonWrap: {
     padding: 24,
   },
-  sun: {
+  moon: {
     fontSize: 120,
   },
   caption: {
     fontSize: 22,
     fontWeight: '700',
-    color: colors.ink,
+    color: colors.surface,
     textAlign: 'center',
   },
   doneButton: {
@@ -100,7 +128,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   doneButtonText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 17,
     fontWeight: '700',
   },

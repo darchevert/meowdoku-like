@@ -16,7 +16,7 @@ export function LoseModal({ visible, title, onRetry, onHome }: LoseModalProps) {
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.emoji}>🐱💔</Text>
+          <Text style={styles.emoji}>🧟💀</Text>
           <Text style={styles.subtitle}>Plus de vies pour ce niveau</Text>
           <PressableScale style={styles.primaryButton} onPress={onRetry}>
             <Text style={styles.primaryButtonText}>Réessayer</Text>
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 17,
     fontWeight: '700',
   },

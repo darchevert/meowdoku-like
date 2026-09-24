@@ -13,7 +13,7 @@ import { generatePuzzle } from '../engine/generator';
 import { findConflicts, isSolved } from '../engine/solver';
 import type { CellState, Puzzle } from '../engine/types';
 import { levelToSize, scoreForCompletion } from '../utils/levelConfig';
-import { DAILY_CHALLENGE_FISH_REWARD, DAILY_CHALLENGE_SIZE, generateDailyPuzzle } from '../utils/dailyChallenge';
+import { DAILY_CHALLENGE_BRAIN_REWARD, DAILY_CHALLENGE_SIZE, generateDailyPuzzle } from '../utils/dailyChallenge';
 import { playSound } from '../utils/sounds';
 import { showRewardedAd } from '../utils/ads';
 import { useGameStore } from '../state/store';
@@ -25,7 +25,7 @@ import { MAX_CONTENT_WIDTH } from '../theme/layout';
 // never show a real ad there once the mock is swapped for the real one.
 const ADS_SUPPORTED = Platform.OS !== 'web';
 
-const FISH_REWARD = 3;
+const BRAIN_REWARD = 3;
 const HINT_HIGHLIGHT_MS = 2500;
 const MAX_LIVES = 3;
 const DOUBLE_TAP_MS = 300;
@@ -90,7 +90,7 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
   const [won, setWon] = useState(false);
   const [lives, setLives] = useState(MAX_LIVES);
   const [lost, setLost] = useState(false);
-  const [lastReward, setLastReward] = useState({ score: 0, fish: 0 });
+  const [lastReward, setLastReward] = useState({ score: 0, brains: 0 });
   const [hintsUsed, setHintsUsed] = useState(0);
   const [autoCatsUsed, setAutoCatsUsed] = useState(0);
 
@@ -168,11 +168,11 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     return () => clearInterval(interval);
   }, [timerModeEnabled, loading, puzzle, won, lost]);
 
-  const cats = useMemo(() => {
+  const zombies = useMemo(() => {
     const list: Array<{ row: number; col: number }> = [];
     grid.forEach((row, r) =>
       row.forEach((cellState, c) => {
-        if (cellState === 'cat') list.push({ row: r, col: c });
+        if (cellState === 'zombie') list.push({ row: r, col: c });
       })
     );
     return list;
@@ -180,21 +180,21 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
 
   const conflictKeys = useMemo(() => {
     if (!puzzle) return new Set<string>();
-    const conflicts = findConflicts(puzzle.size, puzzle.regions, cats);
+    const conflicts = findConflicts(puzzle.size, puzzle.regions, zombies);
     return new Set(conflicts.map((c) => `${c.row},${c.col}`));
-  }, [puzzle, cats]);
+  }, [puzzle, zombies]);
 
   useEffect(() => {
     if (!puzzle || won || lost) return;
-    if (isSolved(puzzle.size, puzzle.regions, cats)) {
+    if (isSolved(puzzle.size, puzzle.regions, zombies)) {
       const scoreEarned = scoreForCompletion(puzzle.size, hintsUsed, autoCatsUsed);
-      const fishEarned = daily ? DAILY_CHALLENGE_FISH_REWARD : FISH_REWARD;
+      const brainsEarned = daily ? DAILY_CHALLENGE_BRAIN_REWARD : BRAIN_REWARD;
       if (daily) {
-        completeDailyChallenge({ scoreEarned, fishEarned });
+        completeDailyChallenge({ scoreEarned, brainsEarned });
       } else {
-        completeLevel({ scoreEarned, fishEarned });
+        completeLevel({ scoreEarned, brainsEarned });
       }
-      setLastReward({ score: scoreEarned, fish: fishEarned });
+      setLastReward({ score: scoreEarned, brains: brainsEarned });
       if (timerModeEnabled) {
         setLastElapsedSec(elapsedSec);
         setIsNewRecord(recordBestTime(puzzle.size, elapsedSec));
@@ -203,7 +203,7 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
       playIfEnabled('win');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cats, puzzle, lost]);
+  }, [zombies, puzzle, lost]);
 
   function setCell(row: number, col: number, state: CellState) {
     setGrid((prev) => {
@@ -233,12 +233,12 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
 
   /** Sets a cell to the paint gesture's target state (see
    * gestureModeRef below) — a no-op if the cell is already there, locked
-   * in as 'cat'/'wrong', or out of bounds. Idempotent, so repeatedly
+   * in as 'zombie'/'wrong', or out of bounds. Idempotent, so repeatedly
    * re-entering the same cell mid-drag is harmless. */
   function paintCell(row: number, col: number, target: 'x' | 'empty') {
     setGrid((prev) => {
       const current = prev[row]?.[col];
-      if (current === undefined || current === 'cat' || current === 'wrong') return prev;
+      if (current === undefined || current === 'zombie' || current === 'wrong') return prev;
       if (current === target) return prev;
       const next = prev.map((r) => r.slice());
       next[row][col] = target;
@@ -246,8 +246,8 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     });
   }
 
-  /** Double-tapping a cell commits to placing a cat there. If it's
-   * actually correct the cat is placed; if not, the guess costs a life
+  /** Double-tapping a cell commits to placing a zombie there. If it's
+   * actually correct the zombie is placed; if not, the guess costs a life
    * and the cell is permanently marked "wrong" (red, locked) — a cell
    * already marked that way can't be re-guessed or lose another life.
    * In zen mode (regular levels only, never the daily challenge) a wrong
@@ -255,11 +255,11 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
    * cost a life or end the level. */
   function handleDoubleTap(row: number, col: number) {
     if (!puzzle) return;
-    if (grid[row][col] === 'cat' || grid[row][col] === 'wrong') return;
+    if (grid[row][col] === 'zombie' || grid[row][col] === 'wrong') return;
     pushHistory();
 
     if (col === puzzle.solution[row]) {
-      setCell(row, col, 'cat');
+      setCell(row, col, 'zombie');
       playIfEnabled('correct');
       triggerCelebration();
       return;
@@ -305,7 +305,7 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     }
 
     const current = grid[row]?.[col];
-    if (current === undefined || current === 'cat' || current === 'wrong') {
+    if (current === undefined || current === 'zombie' || current === 'wrong') {
       gestureModeRef.current = null;
       return;
     }
@@ -328,7 +328,7 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
   function firstUnsolvedRow(): number | null {
     if (!puzzle) return null;
     for (let r = 0; r < puzzle.size; r++) {
-      if (grid[r]?.[puzzle.solution[r]] !== 'cat') return r;
+      if (grid[r]?.[puzzle.solution[r]] !== 'zombie') return r;
     }
     return null;
   }
@@ -338,7 +338,7 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     const row = firstUnsolvedRow();
     if (row === null) return;
     if (!useHintCharge() && !buyHint()) {
-      Alert.alert('Pas assez de poissons', 'Termine des niveaux pour en gagner plus 🐟');
+      Alert.alert('Pas assez de cerveaux', 'Termine des niveaux pour en gagner plus 🧠');
       return;
     }
     setHintsUsed((n) => n + 1);
@@ -351,11 +351,11 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     const row = firstUnsolvedRow();
     if (row === null) return;
     if (!useAutoCatCharge() && !buyAutoCat()) {
-      Alert.alert('Pas assez de poissons', 'Termine des niveaux pour en gagner plus 🐟');
+      Alert.alert('Pas assez de cerveaux', 'Termine des niveaux pour en gagner plus 🧠');
       return;
     }
     setAutoCatsUsed((n) => n + 1);
-    setCell(row, puzzle.solution[row], 'cat');
+    setCell(row, puzzle.solution[row], 'zombie');
   }
 
   const [adLoading, setAdLoading] = useState(false);
@@ -380,11 +380,11 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
       <View style={styles.screen}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.inner}>
-            <TopBar titleLabel="Défi" titleValue="du jour" score={score} onBack={onBack} onSettings={onSettings} />
+            <TopBar titleLabel="Alerte" titleValue="zombie" score={score} onBack={onBack} onSettings={onSettings} />
             <View style={styles.doneCard}>
-              <Text style={styles.doneEmoji}>🐱✅</Text>
-              <Text style={styles.doneTitle}>Défi du jour déjà réussi !</Text>
-              <Text style={styles.doneSubtitle}>Reviens demain pour un nouveau défi.</Text>
+              <Text style={styles.doneEmoji}>🧟✅</Text>
+              <Text style={styles.doneTitle}>Alerte zombie déjà réussie !</Text>
+              <Text style={styles.doneSubtitle}>Reviens demain pour une nouvelle alerte.</Text>
             </View>
           </View>
         </ScrollView>
@@ -398,16 +398,16 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.inner}>
             <TopBar
-              titleLabel={daily ? 'Défi' : 'Niveau'}
-              titleValue={daily ? 'du jour' : String(activeLevel)}
+              titleLabel={daily ? 'Alerte' : 'Niveau'}
+              titleValue={daily ? 'zombie' : String(activeLevel)}
               score={score}
               onBack={onBack}
               onSettings={onSettings}
             />
 
             <ProgressBadges
-              catsPlaced={cats.length}
-              catsTotal={size}
+              zombiesPlaced={zombies.length}
+              zombiesTotal={size}
               lives={lives}
               maxLives={MAX_LIVES}
               zen={zenActive}
@@ -444,7 +444,7 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
 
             <View style={styles.powerRow}>
               <PowerButton emoji="↩" onPress={handleUndo} disabled={!canUndo} />
-              <PowerButton emoji="🐱" count={autoCats} onPress={handleAutoCat} />
+              <PowerButton emoji="🧟" count={autoCats} onPress={handleAutoCat} />
               <PowerButton emoji="💡" count={hints} onPress={handleHint} />
               {ADS_SUPPORTED && (
                 <PowerButton
@@ -460,9 +460,9 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
 
       <WinModal
         visible={won}
-        title={daily ? 'Défi du jour terminé !' : `Niveau ${activeLevel} terminé !`}
+        title={daily ? 'Alerte zombie terminée !' : `Niveau ${activeLevel} terminé !`}
         scoreEarned={lastReward.score}
-        fishEarned={lastReward.fish}
+        brainsEarned={lastReward.brains}
         primaryLabel={daily ? 'Accueil' : 'Niveau suivant'}
         onPrimary={
           daily
@@ -480,7 +480,7 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
 
       <LoseModal
         visible={lost}
-        title={daily ? 'Défi du jour raté' : `Niveau ${activeLevel} raté`}
+        title={daily ? 'Alerte zombie ratée' : `Niveau ${activeLevel} raté`}
         onRetry={() => {
           setLost(false);
           setAttempt((a) => a + 1);
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     fontSize: 16,
     fontWeight: '700',
-    color: colors.inkSoft,
+    color: colors.surface,
   },
   doneCard: {
     marginTop: 48,

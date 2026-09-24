@@ -45,8 +45,8 @@ export function Cell({ state, regionId, conflict, hinted, size }: CellProps) {
       style={[styles.hitArea, { width: size, height: size, padding: gap }]}
       accessible
       accessibilityLabel={
-        state === 'cat'
-          ? 'Chat'
+        state === 'zombie'
+          ? 'Zombie'
           : state === 'wrong'
           ? 'Erreur, case définitivement exclue'
           : state === 'x'
@@ -62,8 +62,8 @@ export function Cell({ state, regionId, conflict, hinted, size }: CellProps) {
           hinted && styles.hinted,
         ]}
       >
-        {state === 'cat' && (
-          <Text style={[styles.catEmoji, { fontSize: size * 0.58 }]}>🐱</Text>
+        {state === 'zombie' && (
+          <Text style={[styles.zombieEmoji, { fontSize: size * 0.58 }]}>🧟</Text>
         )}
         {state === 'x' && <XMark size={size} color="rgba(255,255,255,0.92)" />}
         {isWrong && <XMark size={size} color={colors.danger} />}
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  catEmoji: {
+  zombieEmoji: {
     textAlign: 'center',
   },
 });

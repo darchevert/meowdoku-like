@@ -51,7 +51,7 @@ export function HomeScreen({ onPlay, onPlayDaily }: HomeScreenProps) {
             onPress={onPlayDaily}
             disabled={!dailyUnlocked}
           >
-            <Text style={styles.cardTitle}>Défi{'\n'}quotidien</Text>
+            <Text style={styles.cardTitle}>Alerte{'\n'}zombie</Text>
             {dailyUnlocked ? (
               <Text style={styles.cardIcon}>{dailyDoneToday ? '✅' : '🎯'}</Text>
             ) : (
@@ -65,8 +65,8 @@ export function HomeScreen({ onPlay, onPlayDaily }: HomeScreenProps) {
           </PressableScale>
 
           <PressableScale style={[styles.card, styles.streakCard]} onPress={() => setShowStreak(true)}>
-            <Text style={[styles.cardTitle, styles.streakTitle]}>Série</Text>
-            <Text style={styles.cardIcon}>☀️</Text>
+            <Text style={[styles.cardTitle, styles.streakTitle]}>Nuits</Text>
+            <Text style={styles.cardIcon}>🌙</Text>
             <View style={styles.streakPill}>
               <Text style={styles.streakValue}>{streak}</Text>
             </View>
@@ -91,10 +91,10 @@ export function HomeScreen({ onPlay, onPlayDaily }: HomeScreenProps) {
 
         <View style={styles.logoBlock}>
           <Text style={styles.logoLine}>
-            ME<Text style={styles.logoAccent}>O</Text>W
+            Z<Text style={styles.logoAccent}>O</Text>MBI
           </Text>
           <Text style={styles.logoLine}>
-            D<Text style={styles.logoOrange}>O</Text>KU
+            D<Text style={styles.logoSecondary}>O</Text>KU
           </Text>
         </View>
 
@@ -136,9 +136,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: '#FDE9A8',
+    backgroundColor: '#4A3B66',
     borderWidth: 3,
-    borderColor: '#7BC77E',
+    borderColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -176,21 +176,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dailyCard: {
-    backgroundColor: '#6C6CB8',
+    backgroundColor: '#4A3B66',
     justifyContent: 'space-between',
   },
   streakCard: {
-    backgroundColor: '#F0C23E',
+    backgroundColor: '#3A3550',
+    borderWidth: 2,
+    borderColor: 'rgba(240, 194, 62, 0.35)',
     justifyContent: 'space-between',
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#EFEBFA',
+    color: colors.surface,
     textAlign: 'center',
   },
   streakTitle: {
-    color: '#7A5A12',
+    color: colors.accentSecondary,
     alignSelf: 'flex-start',
   },
   cardIcon: {
@@ -198,16 +200,16 @@ const styles = StyleSheet.create({
   },
   lockIcon: {
     fontSize: 36,
-    color: '#EFEBFA',
+    color: colors.surface,
   },
   cardSubtitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#EFEBFA',
+    color: colors.surface,
     textAlign: 'center',
   },
   streakPill: {
-    backgroundColor: '#FBE7A8',
+    backgroundColor: colors.accentSecondary,
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 20,
@@ -215,7 +217,7 @@ const styles = StyleSheet.create({
   streakValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#7A5A12',
+    color: '#3A2C10',
   },
   companionBanner: {
     flexDirection: 'row',
@@ -276,14 +278,14 @@ const styles = StyleSheet.create({
   logoLine: {
     fontSize: 44,
     fontWeight: '900',
-    color: colors.ink,
+    color: colors.surface,
     letterSpacing: 2,
   },
   logoAccent: {
-    color: '#8E86D6',
-  },
-  logoOrange: {
     color: colors.accent,
+  },
+  logoSecondary: {
+    color: colors.accentSecondary,
   },
   playButton: {
     marginTop: 36,
@@ -298,7 +300,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   playButtonText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 22,
     fontWeight: '800',
   },

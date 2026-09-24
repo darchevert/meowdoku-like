@@ -4,26 +4,26 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { todayKey } from '../utils/date';
 
 export const AVATARS = [
-  'cat',
-  'panda',
-  'dog',
-  'crocodile',
-  'chicken',
-  'duck',
-  'lion',
-  'calico',
+  'zombie',
+  'ghost',
+  'pumpkin',
+  'skull',
+  'vampire',
+  'bat',
+  'ogre',
+  'troll',
 ] as const;
 export type AvatarId = (typeof AVATARS)[number];
 
 export const AVATAR_EMOJI: Record<AvatarId, string> = {
-  cat: '🐱',
-  panda: '🐼',
-  dog: '🐶',
-  crocodile: '🐊',
-  chicken: '🐔',
-  duck: '🦆',
-  lion: '🦁',
-  calico: '🐈',
+  zombie: '🧟',
+  ghost: '👻',
+  pumpkin: '🎃',
+  skull: '💀',
+  vampire: '🧛',
+  bat: '🦇',
+  ogre: '👹',
+  troll: '🧌',
 };
 
 export const FRAMES = ['none', 'green', 'gold', 'blue', 'pink'] as const;
@@ -47,16 +47,18 @@ interface GameState {
   // Progression
   level: number;
   score: number;
-  fish: number;
+  /** The currency — "brains", earned by clearing levels/the daily
+   * challenge and spent on power-ups or feeding the companion. */
+  brains: number;
   hints: number;
   autoCats: number;
-  completeLevel: (params: { scoreEarned: number; fishEarned: number }) => void;
+  completeLevel: (params: { scoreEarned: number; brainsEarned: number }) => void;
 
   // Daily challenge — a single shared puzzle per calendar day, separate
   // from level progression (doesn't advance `level`).
   dailyChallengeCompletedDate: string | null;
   hasCompletedDailyToday: () => boolean;
-  completeDailyChallenge: (params: { scoreEarned: number; fishEarned: number }) => void;
+  completeDailyChallenge: (params: { scoreEarned: number; brainsEarned: number }) => void;
 
   // Power-ups
   useHint: () => boolean;
@@ -64,7 +66,7 @@ interface GameState {
   buyHint: () => boolean;
   buyAutoCat: () => boolean;
   /** A free hint charge earned by watching a rewarded ad — unlike
-   * buyHint, never costs fish. */
+   * buyHint, never costs brains. */
   grantHint: () => void;
 
   // Streak
@@ -98,8 +100,8 @@ interface GameState {
   /** Returns true if this run beat (or set) the record for that size. */
   recordBestTime: (size: number, seconds: number) => boolean;
 
-  // Companion — a persistent pet fed with fish, giving them a use beyond
-  // the hint/auto-cat shop. XP-based level with emoji tiers, plus
+  // Companion — a persistent pet fed with brains, giving them a use
+  // beyond the hint/auto-cat shop. XP-based level with emoji tiers, plus
   // separately unlockable/equippable cosmetic accessories.
   companionXp: number;
   unlockedAccessories: string[];
@@ -109,41 +111,41 @@ interface GameState {
   equipAccessory: (id: string | null) => void;
 }
 
-const HINT_COST_FISH = 3;
-const AUTOCAT_COST_FISH = 3;
-const FEED_COST_FISH = 2;
+const HINT_COST_BRAINS = 3;
+const AUTOCAT_COST_BRAINS = 3;
+const FEED_COST_BRAINS = 2;
 const FEED_XP_GAIN = 10;
 
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
       playerId: randomPlayerId(),
-      avatar: 'duck',
+      avatar: 'zombie',
       frame: 'green',
       setAvatar: (avatar) => set({ avatar }),
       setFrame: (frame) => set({ frame }),
 
       level: 1,
       score: 0,
-      fish: 10,
+      brains: 10,
       hints: 5,
       autoCats: 5,
-      completeLevel: ({ scoreEarned, fishEarned }) =>
+      completeLevel: ({ scoreEarned, brainsEarned }) =>
         set((s) => ({
           level: s.level + 1,
           score: s.score + scoreEarned,
-          fish: s.fish + fishEarned,
+          brains: s.brains + brainsEarned,
         })),
 
       dailyChallengeCompletedDate: null,
       hasCompletedDailyToday: () => get().dailyChallengeCompletedDate === todayKey(),
-      completeDailyChallenge: ({ scoreEarned, fishEarned }) => {
+      completeDailyChallenge: ({ scoreEarned, brainsEarned }) => {
         const today = todayKey();
         if (get().dailyChallengeCompletedDate === today) return;
         set((s) => ({
           dailyChallengeCompletedDate: today,
           score: s.score + scoreEarned,
-          fish: s.fish + fishEarned,
+          brains: s.brains + brainsEarned,
         }));
       },
 
@@ -160,15 +162,15 @@ export const useGameStore = create<GameState>()(
         return true;
       },
       buyHint: () => {
-        const { fish } = get();
-        if (fish < HINT_COST_FISH) return false;
-        set((s) => ({ fish: s.fish - HINT_COST_FISH, hints: s.hints + 1 }));
+        const { brains } = get();
+        if (brains < HINT_COST_BRAINS) return false;
+        set((s) => ({ brains: s.brains - HINT_COST_BRAINS, hints: s.hints + 1 }));
         return true;
       },
       buyAutoCat: () => {
-        const { fish } = get();
-        if (fish < AUTOCAT_COST_FISH) return false;
-        set((s) => ({ fish: s.fish - AUTOCAT_COST_FISH, autoCats: s.autoCats + 1 }));
+        const { brains } = get();
+        if (brains < AUTOCAT_COST_BRAINS) return false;
+        set((s) => ({ brains: s.brains - AUTOCAT_COST_BRAINS, autoCats: s.autoCats + 1 }));
         return true;
       },
       grantHint: () => set((s) => ({ hints: s.hints + 1 })),
@@ -188,7 +190,7 @@ export const useGameStore = create<GameState>()(
           streak: nextStreak,
           bestStreak: Math.max(bestStreak, nextStreak),
           lastStreakClaimDate: today,
-          fish: get().fish + 2,
+          brains: get().brains + 2,
         });
       },
 
@@ -216,17 +218,17 @@ export const useGameStore = create<GameState>()(
       unlockedAccessories: [],
       equippedAccessory: null,
       feedCompanion: () => {
-        const { fish } = get();
-        if (fish < FEED_COST_FISH) return false;
-        set((s) => ({ fish: s.fish - FEED_COST_FISH, companionXp: s.companionXp + FEED_XP_GAIN }));
+        const { brains } = get();
+        if (brains < FEED_COST_BRAINS) return false;
+        set((s) => ({ brains: s.brains - FEED_COST_BRAINS, companionXp: s.companionXp + FEED_XP_GAIN }));
         return true;
       },
       unlockAccessory: (id, cost) => {
-        const { fish, unlockedAccessories } = get();
+        const { brains, unlockedAccessories } = get();
         if (unlockedAccessories.includes(id)) return true;
-        if (fish < cost) return false;
+        if (brains < cost) return false;
         set((s) => ({
-          fish: s.fish - cost,
+          brains: s.brains - cost,
           unlockedAccessories: [...s.unlockedAccessories, id],
         }));
         return true;
@@ -234,7 +236,7 @@ export const useGameStore = create<GameState>()(
       equipAccessory: (id) => set({ equippedAccessory: id }),
     }),
     {
-      name: 'meowdoku-storage',
+      name: 'zombidoku-storage',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )
