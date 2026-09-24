@@ -1,9 +1,12 @@
-import React from 'react';
-import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useRef } from 'react';
+import { Animated, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { colors } from '../theme/colors';
 import { useGameStore } from '../state/store';
 import { PressableScale } from './PressableScale';
 import { ACCESSORIES, companionProgress, companionTier } from '../utils/companion';
+
+const heartPopSource = require('../../assets/lottie/heart-pop.json');
 
 interface CompanionModalProps {
   visible: boolean;
@@ -25,6 +28,22 @@ export function CompanionModal({ visible, onClose }: CompanionModalProps) {
   const progress = companionProgress(companionXp);
   const equippedEmoji = ACCESSORIES.find((a) => a.id === equippedAccessory)?.emoji;
 
+  const heartRef = useRef<LottieView>(null);
+  const bounceAnim = useRef(new Animated.Value(1)).current;
+
+  /** A little squish-bounce on the companion itself plus a heart popping
+   * up above it — much quieter than the win confetti, but still gives
+   * feeding a tactile "it worked" moment instead of just a number
+   * changing. */
+  function handleFeed() {
+    if (!feedCompanion()) return;
+    heartRef.current?.play();
+    Animated.sequence([
+      Animated.timing(bounceAnim, { toValue: 1.18, duration: 90, useNativeDriver: true }),
+      Animated.spring(bounceAnim, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 12 }),
+    ]).start();
+  }
+
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.backdrop}>
@@ -37,10 +56,13 @@ export function CompanionModal({ visible, onClose }: CompanionModalProps) {
           </View>
 
           <View style={styles.showcase}>
-            <View style={styles.companionRow}>
+            <View style={styles.heartLayer} pointerEvents="none">
+              <LottieView ref={heartRef} source={heartPopSource} loop={false} autoPlay={false} style={styles.heart} />
+            </View>
+            <Animated.View style={[styles.companionRow, { transform: [{ scale: bounceAnim }] }]}>
               <Text style={styles.companionEmoji}>{tier.emoji}</Text>
               {equippedEmoji && <Text style={styles.accessoryOverlay}>{equippedEmoji}</Text>}
-            </View>
+            </Animated.View>
             <Text style={styles.companionName}>{tier.name}</Text>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
@@ -48,7 +70,7 @@ export function CompanionModal({ visible, onClose }: CompanionModalProps) {
 
             <PressableScale
               style={[styles.feedButton, brains < FEED_COST_BRAINS && styles.feedButtonDisabled]}
-              onPress={feedCompanion}
+              onPress={handleFeed}
               disabled={brains < FEED_COST_BRAINS}
             >
               <Text style={styles.feedButtonText}>Nourrir · {FEED_COST_BRAINS} 🧠</Text>
@@ -131,6 +153,21 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     marginBottom: 16,
     gap: 8,
+    position: 'relative',
+  },
+  heartLayer: {
+    position: 'absolute',
+    top: -30,
+    width: 120,
+    height: 120,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  heart: {
+    width: '100%',
+    height: '100%',
   },
   companionRow: {
     flexDirection: 'row',

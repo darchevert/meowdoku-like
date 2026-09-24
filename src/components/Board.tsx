@@ -157,8 +157,16 @@ export function Board({
               outputRange: [0.4, 1],
               extrapolate: 'clamp',
             });
+            // A small rise-from-below on top of the fade/scale — cells
+            // feel like they're climbing into place rather than just
+            // materializing, a nod to the zombie theme.
+            const translateY = reveal.interpolate({
+              inputRange: [start, end],
+              outputRange: [16, 0],
+              extrapolate: 'clamp',
+            });
             return (
-              <Animated.View key={c} style={{ opacity, transform: [{ scale }] }}>
+              <Animated.View key={c} style={{ opacity, transform: [{ scale }, { translateY }] }}>
                 <Cell
                   state={cellState}
                   regionId={regions[r][c]}

@@ -16,8 +16,8 @@ interface CelebrationProps {
 const HOLD_MS = 500;
 const FADE_MS = 220;
 
-/** A brief "👏 Excellent ! 👏" pop that floats above the board when a cat
- * is correctly guessed — pure visual reward, doesn't block input. */
+/** A brief "👏 Excellent ! 👏" pop that floats above the board when a
+ * zombie is correctly guessed — pure visual reward, doesn't block input. */
 export function Celebration({ trigger }: CelebrationProps) {
   const anim = useRef(new Animated.Value(0)).current;
   const [word, setWord] = useState<string | null>(null);
@@ -71,9 +71,9 @@ const styles = StyleSheet.create({
   word: {
     fontSize: 20,
     fontWeight: '800',
-    color: colors.accentDark,
-    textShadowColor: 'rgba(255,255,255,0.9)',
-    textShadowRadius: 3,
+    color: colors.accent,
+    textShadowColor: 'rgba(36, 27, 51, 0.9)',
+    textShadowRadius: 4,
     textShadowOffset: { width: 0, height: 1 },
   },
 });

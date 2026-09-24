@@ -199,6 +199,51 @@ Les deux mécanismes de rétention quotidienne sont pleinement fonctionnels :
   qu'un vrai SDK, pour que le remplacement par l'intégration réelle soit
   un changement d'une fonction, pas une refonte de GameScreen.
 
+### Animations
+
+- **`react-native-reanimated` écarté** : installé un temps pour les
+  animations pilotées par les gestes, il a été retiré après un vrai
+  conflit de peer dependency à l'installation (`react-native-worklets`
+  4.x vs. la version que `expo-modules-core` de ce SDK attend) — un
+  risque de casser un build natif que je ne peux pas vérifier ici (pas
+  d'Xcode/Android Studio/appareil dans cet environnement). Les animations
+  pilotées par état (révélation de grille, secousse d'erreur, pression des
+  boutons, pulsation d'indice) restent sur l'API `Animated` native de React
+  Native — sans dépendance native supplémentaire, donc sans ce risque, et
+  déjà largement suffisante pour des sprints/boucles/interpolations.
+- **`lottie-react-native`** ajouté pour les moments "en boîte" que
+  `Animated` ne fait pas bien : un burst de confettis à la victoire
+  (`assets/lottie/confetti.json`) et un petit cœur qui apparaît quand le
+  compagnon est nourri (`assets/lottie/heart-pop.json`). Les deux fichiers
+  sont **générés par un script** (`scripts/generate-lottie.mjs`, à relancer
+  après modif) plutôt que téléchargés depuis LottieFiles ou équivalent —
+  les animations communautaires ont des licences très variables, donc même
+  principe que pour les sons synthétisés (§1) : rien à attribuer, rien à
+  vérifier légalement avant publication sur les stores.
+  - **Limite connue de la vérification web** : le rendu web de Lottie
+    (`@lottiefiles/dotlottie-react`, utilisé en interne par
+    `lottie-react-native` sur cette plateforme) charge un moteur WASM
+    depuis un CDN au premier rendu. Le proxy réseau de cet environnement
+    de développement bloque ce CDN (politique de l'organisation, hors de
+    mon contrôle), donc je n'ai pas pu vérifier visuellement le rendu des
+    confettis/du cœur ici — seulement que l'app ne plante pas et que le
+    reste du flux (modale de victoire, alimentation du compagnon)
+    fonctionne normalement pendant que l'animation échoue silencieusement
+    en arrière-plan. Ça ne devrait affecter ni le web déployé (accès
+    réseau normal pour un vrai visiteur) ni le natif (moteur Lottie natif
+    embarqué dans le binaire, aucune dépendance réseau).
+- **Révélation de grille** (`Board.tsx`) : en plus du fondu/zoom existant,
+  les cases montent légèrement en apparaissant (`translateY`), un clin
+  d'œil au thème — elles ont l'air de sortir de terre plutôt que de juste
+  apparaître.
+- **Pulsation d'indice** (`Cell.tsx`) : l'anneau de surbrillance d'un
+  indice respire (opacité en boucle) au lieu d'être une bordure statique,
+  beaucoup plus visible sur une grande grille chargée.
+- **Entrée de la modale de victoire** : la carte apparaît avec un petit
+  effet ressort (échelle + fondu) synchronisé avec le burst de confettis,
+  plutôt que de juste apparaître d'un coup avec le fondu natif de la
+  `Modal`.
+
 ## 2. Choix techniques
 
 **Expo (React Native + React Native Web) en TypeScript** : une seule base
