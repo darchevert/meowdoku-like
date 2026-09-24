@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { todayKey } from '../utils/date';
+import { milestoneForDay, type StreakReward } from '../utils/streakRewards';
 
 export const AVATARS = [
   'zombie',
@@ -52,6 +53,7 @@ interface GameState {
   brains: number;
   hints: number;
   autoCats: number;
+  mice: number;
   completeLevel: (params: { scoreEarned: number; brainsEarned: number }) => void;
 
   // Daily challenge — a single shared puzzle per calendar day, separate
@@ -63,18 +65,27 @@ interface GameState {
   // Power-ups
   useHint: () => boolean;
   useAutoCat: () => boolean;
+  useMouse: () => boolean;
   buyHint: () => boolean;
   buyAutoCat: () => boolean;
-  /** A free hint charge earned by watching a rewarded ad — unlike
-   * buyHint, never costs brains. */
+  buyMouse: () => boolean;
+  /** Free charges earned by watching a rewarded ad — unlike the buy*
+   * actions, never cost brains. One per power-up so watching an ad for
+   * a depleted mouse bonus doesn't hand out a hint instead. */
   grantHint: () => void;
+  grantAutoCat: () => void;
+  grantMouse: () => void;
 
   // Streak
   streak: number;
   bestStreak: number;
   lastStreakClaimDate: string | null;
   canClaimStreak: () => boolean;
-  claimStreak: () => void;
+  /** Claims tonight's streak day, applying its milestone bonus (if any)
+   * on top of the flat +2 brains every night gives. Returns that bonus so
+   * the UI can show what was won, or `null` on a plain (non-bonus) night
+   * — see utils/streakRewards for the schedule. */
+  claimStreak: () => StreakReward | null;
 
   // Settings
   soundEnabled: boolean;
@@ -113,6 +124,7 @@ interface GameState {
 
 const HINT_COST_BRAINS = 3;
 const AUTOCAT_COST_BRAINS = 3;
+const MOUSE_COST_BRAINS = 3;
 const FEED_COST_BRAINS = 2;
 const FEED_XP_GAIN = 10;
 
@@ -130,6 +142,7 @@ export const useGameStore = create<GameState>()(
       brains: 10,
       hints: 5,
       autoCats: 5,
+      mice: 5,
       completeLevel: ({ scoreEarned, brainsEarned }) =>
         set((s) => ({
           level: s.level + 1,
@@ -161,6 +174,12 @@ export const useGameStore = create<GameState>()(
         set({ autoCats: autoCats - 1 });
         return true;
       },
+      useMouse: () => {
+        const { mice } = get();
+        if (mice <= 0) return false;
+        set({ mice: mice - 1 });
+        return true;
+      },
       buyHint: () => {
         const { brains } = get();
         if (brains < HINT_COST_BRAINS) return false;
@@ -173,7 +192,15 @@ export const useGameStore = create<GameState>()(
         set((s) => ({ brains: s.brains - AUTOCAT_COST_BRAINS, autoCats: s.autoCats + 1 }));
         return true;
       },
+      buyMouse: () => {
+        const { brains } = get();
+        if (brains < MOUSE_COST_BRAINS) return false;
+        set((s) => ({ brains: s.brains - MOUSE_COST_BRAINS, mice: s.mice + 1 }));
+        return true;
+      },
       grantHint: () => set((s) => ({ hints: s.hints + 1 })),
+      grantAutoCat: () => set((s) => ({ autoCats: s.autoCats + 1 })),
+      grantMouse: () => set((s) => ({ mice: s.mice + 1 })),
 
       streak: 0,
       bestStreak: 0,
@@ -182,16 +209,21 @@ export const useGameStore = create<GameState>()(
       claimStreak: () => {
         const { lastStreakClaimDate, streak, bestStreak } = get();
         const today = todayKey();
-        if (lastStreakClaimDate === today) return;
+        if (lastStreakClaimDate === today) return null;
 
         const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
         const nextStreak = lastStreakClaimDate === yesterday ? streak + 1 : 1;
-        set({
+        const milestone = milestoneForDay(nextStreak);
+        set((s) => ({
           streak: nextStreak,
           bestStreak: Math.max(bestStreak, nextStreak),
           lastStreakClaimDate: today,
-          brains: get().brains + 2,
-        });
+          brains: s.brains + 2 + (milestone?.brains ?? 0),
+          hints: s.hints + (milestone?.hints ?? 0),
+          autoCats: s.autoCats + (milestone?.autoCats ?? 0),
+          mice: s.mice + (milestone?.mice ?? 0),
+        }));
+        return milestone;
       },
 
       soundEnabled: true,

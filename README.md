@@ -146,6 +146,17 @@ Les deux mécanismes de rétention quotidienne sont pleinement fonctionnels :
   incrémente la série si le dernier tap datait d'hier, sinon la remet à 1.
   Persistée (`streak`, `bestStreak`, `lastStreakClaimDate`) via
   `AsyncStorage`.
+  - **Calendrier de bonus** (`utils/streakRewards.ts`) : au-delà des 2 🧠
+    plats de chaque nuit, certaines nuits de la série rapportent un bonus
+    (une charge 🦇/💡/🧟 ou des 🧠 en plus), sur un rythme volontairement
+    *croissant mais mesuré* — les paliers s'espacent de plus en plus
+    (nuit 2, 3, 5, 7, 10, 14, 21, 30, puis tous les 7 jours au-delà) tandis
+    que la récompense grossit à chaque palier, plutôt que d'enchaîner les
+    bonus de plus en plus vite. La modale de série (`StreakModal.tsx`)
+    affiche un mini calendrier des 7 prochaines nuits avec le logo du bonus
+    sur celles qui en ont un, plus un texte "Prochain bonus dans N nuits" ;
+    la carte "Nuits" de l'accueil affiche un aperçu du même calcul sans
+    avoir à ouvrir la modale.
 - **Défi quotidien** : débloqué au niveau 21 (carte "Alerte zombie" sur
   l'accueil, verrouillée 🔒 avant, cible 🎯 après). C'est une grille 9×9
   **identique pour tous les joueurs** un jour donné, générée par une seed
@@ -195,9 +206,13 @@ Les deux mécanismes de rétention quotidienne sont pleinement fonctionnels :
   pendant la partie et garde le meilleur temps par taille de grille
   (`bestTimeBySize`), affiché dans la modale de victoire avec "🏆 Nouveau
   record !" le cas échéant.
-- **Publicités récompensées** (`utils/ads.ts`) — bouton 📺 à côté des
-  power-ups (niveaux normaux uniquement, masqué sur web) qui donne un
-  indice gratuit après visionnage. **Actuellement un mock** : un vrai SDK
+- **Publicités récompensées, par bonus** (`utils/ads.ts`) — chacun des 3
+  power-ups a son propre déclencheur de pub plutôt qu'un bouton 📺 partagé :
+  une fois ses charges épuisées, son badge rouge devient un "▶" vert
+  (`PowerButton`, `badgeVariant="ad"`) ; un tap lance une pub récompensée
+  qui, en cas de succès, recharge *et* exécute directement ce bonus précis
+  (niveaux normaux uniquement, masqué sur web où le fallback reste
+  d'acheter la charge avec des 🧠). **Actuellement un mock** : un vrai SDK
   publicitaire (AdMob via `react-native-google-mobile-ads`) nécessite un
   plugin de config Expo, un build natif (EAS) et un compte AdMob — rien
   de tout ça n'est installable ni testable dans cet environnement de
@@ -205,6 +220,32 @@ Les deux mécanismes de rétention quotidienne sont pleinement fonctionnels :
   simule la même forme asynchrone "charger → afficher → récompenser"
   qu'un vrai SDK, pour que le remplacement par l'intégration réelle soit
   un changement d'une fonction, pas une refonte de GameScreen.
+- **Indice 💡 par déduction logique** (`engine/deduction.ts`) — l'indice ne
+  révèle plus directement une case de la solution cachée : il assombrit
+  l'écran et met en surbrillance uniquement ce qu'un joueur attentif aurait
+  pu trouver lui-même, avec un bouton "Appliquer" pour le poser à sa place
+  (et "Fermer" pour l'ignorer). Deux techniques de déduction, à un seul
+  niveau de chaînage (pas un solveur complet) :
+  1. toute case vide qui partage une ligne/colonne/cimetière avec un
+     zombie déjà posé, ou qui lui est adjacente, peut être marquée ✕ ;
+  2. une fois ces exclusions comptées, si une ligne/colonne/cimetière n'a
+     plus qu'une seule case candidate, cette case est forcément le zombie
+     (un "single caché", la même logique qu'au Sudoku).
+
+  Vérifié par un script de stress-test autonome (30 tirages, tailles 6 à
+  10) avant toute intégration UI : zéro fausse suggestion de ✕, zéro case
+  de zombie incorrecte, un placement forcé trouvé dans 87 % des cas. Sur
+  les board states où rien n'est déductible dans l'immédiat (~13 % des cas
+  testés), l'indice retombe sur l'ancien comportement (révéler une case de
+  la solution) plutôt que de ne rien faire pour la charge dépensée.
+- **Bonus chauve-souris 🦇** (remplace la "souris" de l'original — le jeu
+  de mots "chat qui chasse la souris" ne survit pas au rebrand zombie,
+  alors qu'une chauve-souris nocturne colle mieux au thème, et c'est déjà
+  l'un des 8 avatars) — pose 3 ✕ sur des cases vides tirées au hasard parmi
+  celles réellement fausses pour leur ligne. Une chauve-souris apparaît en
+  rebondissant sur chaque case (`CritterPop` dans `Cell.tsx`) puis
+  s'efface, laissant place à la croix, l'une après l'autre plutôt que les
+  3 en même temps.
 
 ### Animations
 
@@ -243,9 +284,13 @@ Les deux mécanismes de rétention quotidienne sont pleinement fonctionnels :
   les cases montent légèrement en apparaissant (`translateY`), un clin
   d'œil au thème — elles ont l'air de sortir de terre plutôt que de juste
   apparaître.
-- **Pulsation d'indice** (`Cell.tsx`) : l'anneau de surbrillance d'un
-  indice respire (opacité en boucle) au lieu d'être une bordure statique,
-  beaucoup plus visible sur une grande grille chargée.
+- **Pulsation d'indice** (`Cell.tsx`) : l'anneau de surbrillance d'une
+  déduction respire (opacité en boucle) au lieu d'être une bordure
+  statique — vert pour un ✕ déductible, jaune pour la case du zombie —
+  beaucoup plus visible sur une grande grille chargée. Les cases hors
+  surbrillance reçoivent un voile sombre individuel (`dimmed`) plutôt
+  qu'un unique calque plein écran, pour approximer l'effet "l'écran
+  s'assombrit" sans passer par un masque SVG ou un portail de vue.
 - **Entrée de la modale de victoire** : la carte apparaît avec un petit
   effet ressort (échelle + fondu) synchronisé avec le burst de confettis,
   plutôt que de juste apparaître d'un coup avec le fondu natif de la

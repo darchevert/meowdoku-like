@@ -4,6 +4,7 @@ import { colors } from '../theme/colors';
 import { AVATAR_EMOJI, useGameStore } from '../state/store';
 import { DAILY_CHALLENGE_UNLOCK_LEVEL } from '../utils/levelConfig';
 import { companionProgress, companionTier, ACCESSORIES } from '../utils/companion';
+import { milestoneForDay, nextMilestoneDay } from '../utils/streakRewards';
 import { ProfileModal } from '../components/ProfileModal';
 import { StreakModal } from '../components/StreakModal';
 import { SettingsModal } from '../components/SettingsModal';
@@ -27,6 +28,13 @@ export function HomeScreen({ onPlay, onPlayDaily }: HomeScreenProps) {
   const [showStreak, setShowStreak] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCompanion, setShowCompanion] = useState(false);
+
+  // The next not-yet-secured night — whether tonight's already claimed or
+  // not, this is always the soonest one still up for grabs.
+  const upcomingNight = streak + 1;
+  const nextBonusDay = nextMilestoneDay(upcomingNight);
+  const nextBonusReward = milestoneForDay(nextBonusDay);
+  const nightsUntilBonus = nextBonusDay - upcomingNight;
 
   const dailyUnlocked = level >= DAILY_CHALLENGE_UNLOCK_LEVEL;
   const tier = companionTier(companionXp);
@@ -70,6 +78,13 @@ export function HomeScreen({ onPlay, onPlayDaily }: HomeScreenProps) {
             <View style={styles.streakPill}>
               <Text style={styles.streakValue}>{streak}</Text>
             </View>
+            {nextBonusReward && (
+              <Text style={styles.streakBonusHint}>
+                {nightsUntilBonus === 0
+                  ? `${nextBonusReward.emoji} ce soir`
+                  : `${nextBonusReward.emoji} dans ${nightsUntilBonus}`}
+              </Text>
+            )}
           </PressableScale>
         </View>
 
@@ -218,6 +233,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: '#3A2C10',
+  },
+  streakBonusHint: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.accentSecondary,
+    marginTop: 6,
   },
   companionBanner: {
     flexDirection: 'row',

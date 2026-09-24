@@ -3,28 +3,41 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 import { useGameStore } from '../state/store';
 import { PressableScale } from './PressableScale';
+import { milestoneForDay, nextMilestoneDay, type StreakReward } from '../utils/streakRewards';
 
 interface StreakModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
+const CALENDAR_SPAN = 7;
+
 export function StreakModal({ visible, onClose }: StreakModalProps) {
   const streak = useGameStore((s) => s.streak);
   const claimStreak = useGameStore((s) => s.claimStreak);
   const canClaimStreak = useGameStore((s) => s.canClaimStreak);
   const [claimed, setClaimed] = useState(false);
+  const [wonReward, setWonReward] = useState<StreakReward | null>(null);
 
   const alreadyClaimedToday = !canClaimStreak();
+  // The night the calendar should treat as "tonight": once claimed this
+  // session `streak` already reflects it, so no +1 is needed.
+  const displayDay = streak + (claimed ? 0 : 1);
 
   function handleTapMoon() {
     if (alreadyClaimedToday) {
       onClose();
       return;
     }
-    claimStreak();
+    const reward = claimStreak();
+    setWonReward(reward);
     setClaimed(true);
   }
+
+  const nextDay = nextMilestoneDay(displayDay);
+  const daysUntilNext = nextDay - displayDay;
+  const nextReward = milestoneForDay(nextDay);
+  const calendarDays = Array.from({ length: CALENDAR_SPAN }, (_, i) => displayDay + i);
 
   return (
     <Modal
@@ -32,7 +45,10 @@ export function StreakModal({ visible, onClose }: StreakModalProps) {
       transparent
       animationType="fade"
       onRequestClose={onClose}
-      onDismiss={() => setClaimed(false)}
+      onDismiss={() => {
+        setClaimed(false);
+        setWonReward(null);
+      }}
     >
       <Pressable style={styles.backdrop} onPress={claimed ? onClose : undefined}>
         <Text style={styles.star1}>✦</Text>
@@ -55,6 +71,39 @@ export function StreakModal({ visible, onClose }: StreakModalProps) {
             : 'Touchez la lune,\nsurvivez à la nuit !'}
         </Text>
 
+        {claimed && wonReward && (
+          <View style={styles.rewardPill}>
+            <Text style={styles.rewardText}>
+              {wonReward.emoji} Bonus : {wonReward.label}
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.calendarCard} pointerEvents="none">
+          <Text style={styles.calendarTitle}>Calendrier des bonus</Text>
+          <View style={styles.calendarRow}>
+            {calendarDays.map((day, i) => {
+              const dayReward = milestoneForDay(day);
+              const isToday = i === 0;
+              return (
+                <View key={day} style={[styles.calendarCell, isToday && styles.calendarCellToday]}>
+                  <Text style={styles.calendarEmoji}>{dayReward ? dayReward.emoji : '🌑'}</Text>
+                  <Text style={[styles.calendarDayNumber, isToday && styles.calendarDayNumberToday]}>
+                    {day}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+          <Text style={styles.calendarHint}>
+            {daysUntilNext === 0 && nextReward
+              ? `Bonus ce soir : ${nextReward.emoji} ${nextReward.label}`
+              : nextReward
+              ? `Prochain bonus dans ${daysUntilNext} nuit${daysUntilNext > 1 ? 's' : ''} : ${nextReward.emoji} ${nextReward.label}`
+              : null}
+          </Text>
+        </View>
+
         {claimed && (
           <PressableScale style={styles.doneButton} onPress={onClose}>
             <Text style={styles.doneButtonText}>Continuer</Text>
@@ -71,7 +120,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 24,
+    gap: 20,
     padding: 24,
   },
   star1: {
@@ -110,15 +159,73 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   moonWrap: {
-    padding: 24,
+    padding: 16,
   },
   moon: {
-    fontSize: 120,
+    fontSize: 100,
   },
   caption: {
     fontSize: 22,
     fontWeight: '700',
     color: colors.surface,
+    textAlign: 'center',
+  },
+  rewardPill: {
+    backgroundColor: colors.accentSecondary,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+  },
+  rewardText: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  calendarCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 16,
+    gap: 10,
+  },
+  calendarTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.inkSoft,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  calendarRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  calendarCell: {
+    alignItems: 'center',
+    gap: 4,
+    width: 36,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  calendarCellToday: {
+    backgroundColor: colors.surfaceMuted,
+  },
+  calendarEmoji: {
+    fontSize: 18,
+  },
+  calendarDayNumber: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.inkSoft,
+  },
+  calendarDayNumberToday: {
+    color: colors.ink,
+  },
+  calendarHint: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.ink,
     textAlign: 'center',
   },
   doneButton: {

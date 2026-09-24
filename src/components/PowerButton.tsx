@@ -6,13 +6,19 @@ import { PressableScale } from './PressableScale';
 interface PowerButtonProps {
   emoji: string;
   /** Omit for a free action with no charge count (e.g. undo) — hides the
-   * badge instead of showing a meaningless number. */
-  count?: number;
+   * badge instead of showing a meaningless number. A string renders as
+   * badge text as-is (used for the "▶" rewarded-ad prompt when a
+   * power-up is out of charges). */
+  badge?: string | number;
+  /** 'ad' gives the badge a distinct color from the normal charge-count
+   * red, so a depleted power-up's "watch an ad" state doesn't look like
+   * just another number. */
+  badgeVariant?: 'count' | 'ad';
   onPress: () => void;
   disabled?: boolean;
 }
 
-export function PowerButton({ emoji, count, onPress, disabled }: PowerButtonProps) {
+export function PowerButton({ emoji, badge, badgeVariant = 'count', onPress, disabled }: PowerButtonProps) {
   return (
     <PressableScale
       style={[styles.button, disabled && styles.buttonDisabled]}
@@ -21,9 +27,9 @@ export function PowerButton({ emoji, count, onPress, disabled }: PowerButtonProp
       accessibilityRole="button"
     >
       <Text style={styles.emoji}>{emoji}</Text>
-      {count !== undefined && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{count}</Text>
+      {badge !== undefined && (
+        <View style={[styles.badge, badgeVariant === 'ad' && styles.badgeAd]}>
+          <Text style={styles.badgeText}>{badge}</Text>
         </View>
       )}
     </PressableScale>
@@ -61,6 +67,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
+  },
+  badgeAd: {
+    backgroundColor: colors.accent,
   },
   badgeText: {
     color: '#fff',

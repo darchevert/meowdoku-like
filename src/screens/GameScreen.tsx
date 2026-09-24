@@ -6,11 +6,13 @@ import { TopBar } from '../components/TopBar';
 import { RuleCards } from '../components/RuleCard';
 import { ProgressBadges } from '../components/ProgressBadges';
 import { PowerButton } from '../components/PowerButton';
+import { PressableScale } from '../components/PressableScale';
 import { WinModal } from '../components/WinModal';
 import { LoseModal } from '../components/LoseModal';
 import { Celebration, type CelebrationTrigger } from '../components/Celebration';
 import { generatePuzzle } from '../engine/generator';
 import { findConflicts, isSolved } from '../engine/solver';
+import { findDeductions, type Deduction } from '../engine/deduction';
 import type { CellState, Puzzle } from '../engine/types';
 import { levelToSize, scoreForCompletion } from '../utils/levelConfig';
 import { DAILY_CHALLENGE_BRAIN_REWARD, DAILY_CHALLENGE_SIZE, generateDailyPuzzle } from '../utils/dailyChallenge';
@@ -26,7 +28,12 @@ import { MAX_CONTENT_WIDTH } from '../theme/layout';
 const ADS_SUPPORTED = Platform.OS !== 'web';
 
 const BRAIN_REWARD = 3;
-const HINT_HIGHLIGHT_MS = 2500;
+// How long the bat lingers on a cell before it swoops off and leaves the
+// ✕ behind — see handleMouse. Kept in step with CritterPop's own timing
+// in Cell.tsx (spring + 220ms hold + 140ms fade ≈ 450ms) so the mark
+// lands right as the bat disappears rather than popping in early/late.
+const CRITTER_POP_MS = 450;
+const CRITTER_GAP_MS = 150;
 const MAX_LIVES = 3;
 const DOUBLE_TAP_MS = 300;
 const CELEBRATION_WORDS = ['Excellent !', 'Génial !', 'Incroyable !', 'Bravo !', 'Parfait !', 'Superbe !'];
@@ -49,18 +56,23 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
   const score = useGameStore((s) => s.score);
   const hints = useGameStore((s) => s.hints);
   const autoCats = useGameStore((s) => s.autoCats);
+  const mice = useGameStore((s) => s.mice);
   const completeLevel = useGameStore((s) => s.completeLevel);
   const completeDailyChallenge = useGameStore((s) => s.completeDailyChallenge);
   const useHintCharge = useGameStore((s) => s.useHint);
   const useAutoCatCharge = useGameStore((s) => s.useAutoCat);
+  const useMouseCharge = useGameStore((s) => s.useMouse);
   const buyHint = useGameStore((s) => s.buyHint);
   const buyAutoCat = useGameStore((s) => s.buyAutoCat);
+  const buyMouse = useGameStore((s) => s.buyMouse);
   const hapticsEnabled = useGameStore((s) => s.hapticsEnabled);
   const soundEnabled = useGameStore((s) => s.soundEnabled);
   const zenModeEnabled = useGameStore((s) => s.zenModeEnabled);
   const timerModeEnabled = useGameStore((s) => s.timerModeEnabled);
   const recordBestTime = useGameStore((s) => s.recordBestTime);
   const grantHint = useGameStore((s) => s.grantHint);
+  const grantAutoCat = useGameStore((s) => s.grantAutoCat);
+  const grantMouse = useGameStore((s) => s.grantMouse);
 
   // The daily challenge always keeps its real stakes — zen mode is a
   // level-play comfort setting, not something that should water down the
@@ -86,7 +98,15 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [grid, setGrid] = useState<CellState[][]>([]);
   const [loading, setLoading] = useState(true);
-  const [hintCell, setHintCell] = useState<{ row: number; col: number } | null>(null);
+  // The hint overlay: `hintActive` drives the dimmed-screen effect,
+  // `hintDeduction` holds what to highlight and what "Appliquer" will
+  // commit. Kept open until the player applies or dismisses it — no
+  // auto-timeout, since revealing a real deduction isn't something to
+  // rush past the way a solution-peek hint used to be.
+  const [hintActive, setHintActive] = useState(false);
+  const [hintDeduction, setHintDeduction] = useState<Deduction | null>(null);
+  // The cell the mouse bonus's bat is currently swooping onto.
+  const [critterCell, setCritterCell] = useState<{ row: number; col: number } | null>(null);
   const [won, setWon] = useState(false);
   const [lives, setLives] = useState(MAX_LIVES);
   const [lost, setLost] = useState(false);
@@ -144,7 +164,9 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     setWon(false);
     setLost(false);
     setLives(MAX_LIVES);
-    setHintCell(null);
+    setHintActive(false);
+    setHintDeduction(null);
+    setCritterCell(null);
     setHintsUsed(0);
     setAutoCatsUsed(0);
     lastTapRef.current = null;
@@ -288,8 +310,10 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
   const gestureModeRef = useRef<'add' | 'remove' | null>(null);
 
   function handleGestureStart(row: number, col: number) {
-    if (won || lost) return;
-    setHintCell(null);
+    // The board is dimmed and inert while the hint overlay is open — the
+    // player is meant to read it and tap Appliquer/Fermer, not keep
+    // playing underneath it.
+    if (won || lost || hintActive) return;
 
     const now = Date.now();
     const last = lastTapRef.current;
@@ -333,17 +357,57 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     return null;
   }
 
+  /** Opens the hint overlay: darkens the board except cells the player
+   * could genuinely have deduced themselves (see engine/deduction.ts) —
+   * never a peek at the hidden solution. "Appliquer" (below) commits
+   * those deductions; this only computes and displays them. */
   function handleHint() {
-    if (!puzzle || won || lost) return;
-    const row = firstUnsolvedRow();
-    if (row === null) return;
+    if (!puzzle || won || lost || hintActive) return;
     if (!useHintCharge() && !buyHint()) {
       Alert.alert('Pas assez de cerveaux', 'Termine des niveaux pour en gagner plus 🧠');
       return;
     }
     setHintsUsed((n) => n + 1);
-    setHintCell({ row, col: puzzle.solution[row] });
-    setTimeout(() => setHintCell(null), HINT_HIGHLIGHT_MS);
+    const deduction = findDeductions(puzzle, grid);
+    if (deduction.xCells.length === 0 && !deduction.zombieCell) {
+      // Nothing is obviously deducible from the board right now — rather
+      // than let the hint do nothing, fall back to the old reveal-a-cell
+      // behavior so the charge the player just spent isn't wasted.
+      const row = firstUnsolvedRow();
+      if (row === null) return;
+      setHintDeduction({ xCells: [], zombieCell: { row, col: puzzle.solution[row] } });
+    } else {
+      setHintDeduction(deduction);
+    }
+    setHintActive(true);
+  }
+
+  /** Commits everything the open hint overlay is highlighting — the ✕'s
+   * and the forced zombie cell, if any — in one undo-able step. */
+  function applyHint() {
+    if (!hintDeduction) return;
+    pushHistory();
+    setGrid((prev) => {
+      const next = prev.map((r) => r.slice());
+      hintDeduction.xCells.forEach(({ row, col }) => {
+        if (next[row][col] === 'empty') next[row][col] = 'x';
+      });
+      if (hintDeduction.zombieCell) {
+        const { row, col } = hintDeduction.zombieCell;
+        next[row][col] = 'zombie';
+      }
+      return next;
+    });
+    if (hintDeduction.zombieCell) {
+      playIfEnabled('correct');
+      triggerCelebration();
+    }
+    closeHint();
+  }
+
+  function closeHint() {
+    setHintActive(false);
+    setHintDeduction(null);
   }
 
   function handleAutoCat() {
@@ -358,16 +422,83 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
     setCell(row, puzzle.solution[row], 'zombie');
   }
 
-  const [adLoading, setAdLoading] = useState(false);
+  function sleep(ms: number) {
+    return new Promise<void>((resolve) => setTimeout(resolve, ms));
+  }
 
-  /** Watch a rewarded ad for a free hint charge — see utils/ads.ts for
-   * why this currently plays a simulated ad rather than a real one. */
-  async function handleWatchAd() {
-    if (adLoading) return;
-    setAdLoading(true);
+  /** The bat bonus: marks 3 random cells ✕ that a player could have
+   * marked themselves eventually (each is simply wrong for its row, not
+   * some other deduced-safe cell) — a bat visibly swoops onto each one
+   * and leaves the ✕ behind rather than the mark just appearing. */
+  const [mouseBusy, setMouseBusy] = useState(false);
+
+  async function handleMouse() {
+    if (!puzzle || won || lost || mouseBusy) return;
+    const candidates: Array<{ row: number; col: number }> = [];
+    for (let r = 0; r < puzzle.size; r++) {
+      for (let c = 0; c < puzzle.size; c++) {
+        if (grid[r][c] === 'empty' && c !== puzzle.solution[r]) candidates.push({ row: r, col: c });
+      }
+    }
+    if (candidates.length === 0) return;
+    if (!useMouseCharge() && !buyMouse()) {
+      Alert.alert('Pas assez de cerveaux', 'Termine des niveaux pour en gagner plus 🧠');
+      return;
+    }
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+    const picks = candidates.slice(0, 3);
+
+    setMouseBusy(true);
+    pushHistory();
+    for (const cell of picks) {
+      setCritterCell(cell);
+      await sleep(CRITTER_POP_MS);
+      setCell(cell.row, cell.col, 'x');
+      setCritterCell(null);
+      await sleep(CRITTER_GAP_MS);
+    }
+    setMouseBusy(false);
+  }
+
+  const [adLoadingKey, setAdLoadingKey] = useState<'hint' | 'autoCat' | 'mouse' | null>(null);
+
+  /** Watch a rewarded ad to both refill and immediately run one specific
+   * bonus — each of the 3 power-ups gets its own ad prompt once it's out
+   * of charges, rather than one shared "watch an ad" button. */
+  async function handleWatchAdFor(kind: 'hint' | 'autoCat' | 'mouse') {
+    if (adLoadingKey) return;
+    setAdLoadingKey(kind);
     const rewarded = await showRewardedAd();
-    setAdLoading(false);
-    if (rewarded) grantHint();
+    setAdLoadingKey(null);
+    if (!rewarded) return;
+    if (kind === 'hint') {
+      grantHint();
+      handleHint();
+    } else if (kind === 'autoCat') {
+      grantAutoCat();
+      handleAutoCat();
+    } else {
+      grantMouse();
+      handleMouse();
+    }
+  }
+
+  /** Shared badge/behavior for the 3 chargeable power buttons: a normal
+   * red count while charges remain; once depleted, native swaps to a
+   * green "▶" rewarded-ad prompt (tap refills *and* runs the bonus), web
+   * (no ad SDK) keeps the old buy-with-brains/insufficient-funds path via
+   * `onAction` itself. */
+  function powerButtonProps(count: number, kind: 'hint' | 'autoCat' | 'mouse', onAction: () => void) {
+    const showAdPrompt = count <= 0 && ADS_SUPPORTED;
+    return {
+      badge: showAdPrompt ? '▶' : count,
+      badgeVariant: (showAdPrompt ? 'ad' : 'count') as 'ad' | 'count',
+      onPress: showAdPrompt ? () => handleWatchAdFor(kind) : onAction,
+      disabled: hintActive || adLoadingKey === kind || (kind === 'mouse' && mouseBusy),
+    };
   }
 
   const shakeTranslate = shakeAnim.interpolate({
@@ -397,29 +528,31 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
       <Animated.View style={[styles.shakeArea, { transform: [{ translateX: shakeTranslate }] }]}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.inner}>
-            <TopBar
-              titleLabel={daily ? 'Alerte' : 'Niveau'}
-              titleValue={daily ? 'zombie' : String(activeLevel)}
-              score={score}
-              onBack={onBack}
-              onSettings={onSettings}
-            />
+            <View style={[styles.chromeGroup, hintActive && styles.dimmedChrome]}>
+              <TopBar
+                titleLabel={daily ? 'Alerte' : 'Niveau'}
+                titleValue={daily ? 'zombie' : String(activeLevel)}
+                score={score}
+                onBack={onBack}
+                onSettings={onSettings}
+              />
 
-            <ProgressBadges
-              zombiesPlaced={zombies.length}
-              zombiesTotal={size}
-              lives={lives}
-              maxLives={MAX_LIVES}
-              zen={zenActive}
-            />
+              <ProgressBadges
+                zombiesPlaced={zombies.length}
+                zombiesTotal={size}
+                lives={lives}
+                maxLives={MAX_LIVES}
+                zen={zenActive}
+              />
 
-            {timerModeEnabled && (
-              <Text style={styles.timer}>
-                ⏱ {Math.floor(elapsedSec / 60)}:{String(elapsedSec % 60).padStart(2, '0')}
-              </Text>
-            )}
+              {timerModeEnabled && (
+                <Text style={styles.timer}>
+                  ⏱ {Math.floor(elapsedSec / 60)}:{String(elapsedSec % 60).padStart(2, '0')}
+                </Text>
+              )}
 
-            <RuleCards />
+              <RuleCards />
+            </View>
 
             <View style={styles.boardArea}>
               <Celebration trigger={celebration} />
@@ -433,7 +566,10 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
                   regions={puzzle.regions}
                   grid={grid}
                   conflictKeys={conflictKeys}
-                  hintCell={hintCell}
+                  highlightXCells={hintDeduction?.xCells}
+                  highlightZombieCell={hintDeduction?.zombieCell}
+                  dimBoard={hintActive}
+                  critterCell={critterCell}
                   onCellGestureStart={handleGestureStart}
                   onCellGestureMove={handleGestureMove}
                   onCellGestureEnd={handleGestureEnd}
@@ -442,17 +578,22 @@ export function GameScreen({ onBack, onSettings, daily = false }: GameScreenProp
               )}
             </View>
 
-            <View style={styles.powerRow}>
-              <PowerButton emoji="↩" onPress={handleUndo} disabled={!canUndo} />
-              <PowerButton emoji="🧟" count={autoCats} onPress={handleAutoCat} />
-              <PowerButton emoji="💡" count={hints} onPress={handleHint} />
-              {ADS_SUPPORTED && (
-                <PowerButton
-                  emoji={adLoading ? '⏳' : '📺'}
-                  onPress={handleWatchAd}
-                  disabled={adLoading}
-                />
-              )}
+            {hintActive && (
+              <View style={styles.hintActionsRow}>
+                <PressableScale style={styles.hintApplyButton} onPress={applyHint}>
+                  <Text style={styles.hintApplyButtonText}>Appliquer</Text>
+                </PressableScale>
+                <PressableScale style={styles.hintCloseButton} onPress={closeHint}>
+                  <Text style={styles.hintCloseButtonText}>Fermer</Text>
+                </PressableScale>
+              </View>
+            )}
+
+            <View style={[styles.powerRow, hintActive && styles.dimmedChrome]}>
+              <PowerButton emoji="↩" onPress={handleUndo} disabled={!canUndo || hintActive} />
+              <PowerButton emoji="🧟" {...powerButtonProps(autoCats, 'autoCat', handleAutoCat)} />
+              <PowerButton emoji="💡" {...powerButtonProps(hints, 'hint', handleHint)} />
+              <PowerButton emoji="🦇" {...powerButtonProps(mice, 'mouse', handleMouse)} />
             </View>
           </View>
         </ScrollView>
@@ -508,6 +649,41 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     gap: 16,
+  },
+  chromeGroup: {
+    gap: 16,
+  },
+  // The hint overlay's screen-dim: everything outside the board's own
+  // per-cell highlighting fades out, drawing the eye to what's lit up.
+  dimmedChrome: {
+    opacity: 0.25,
+  },
+  hintActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  hintApplyButton: {
+    backgroundColor: colors.accent,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 999,
+  },
+  hintApplyButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  hintCloseButton: {
+    backgroundColor: colors.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 999,
+  },
+  hintCloseButtonText: {
+    color: colors.inkSoft,
+    fontSize: 16,
+    fontWeight: '700',
   },
   boardArea: {
     position: 'relative',

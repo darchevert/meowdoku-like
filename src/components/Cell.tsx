@@ -7,7 +7,17 @@ interface CellProps {
   state: CellState;
   regionId: number;
   conflict: boolean;
-  hinted: boolean;
+  /** 'x' = this cell can be safely marked ✕ (deduced from the visible
+   * board, not the hidden solution); 'zombie' = this is the one cell
+   * this row/column/cemetery has left, i.e. the zombie's spot. */
+  highlight?: 'x' | 'zombie' | null;
+  /** Everything not part of the current hint's highlight dims — the
+   * "the rest of the screen goes dark" effect, done per-cell rather
+   * than as one screen-wide mask (see GameScreen for why). */
+  dimmed?: boolean;
+  /** The mouse bonus's bat flies onto this cell and back off before the
+   * ✕ actually lands — this cell is mid-animation, not yet marked. */
+  showCritter?: boolean;
   size: number;
 }
 
@@ -31,10 +41,32 @@ function XMark({ size, color }: { size: number; color: string }) {
   );
 }
 
+/** A bat that pops in, hangs for a moment, then pops back out — the
+ * mouse bonus's "something swoops in and marks this cell" flourish. */
+function CritterPop({ size }: { size: number }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.sequence([
+      Animated.spring(anim, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 14 }),
+      Animated.delay(220),
+      Animated.timing(anim, { toValue: 0, duration: 140, useNativeDriver: true }),
+    ]).start();
+  }, []);
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
+  return (
+    <Animated.Text
+      style={[styles.critter, { fontSize: size * 0.56, opacity: anim, transform: [{ scale }] }]}
+      pointerEvents="none"
+    >
+      🦇
+    </Animated.Text>
+  );
+}
+
 /** Purely presentational — the whole board's touches are handled by a
  * single PanResponder in Board (so a press-and-drag can paint across
  * cells), so this has no onPress of its own. */
-export function Cell({ state, regionId, conflict, hinted, size }: CellProps) {
+export function Cell({ state, regionId, conflict, highlight, dimmed, showCritter, size }: CellProps) {
   const bg = regionColor(regionId);
   const gap = Math.max(1.5, size * 0.035);
   const radius = size * 0.22;
@@ -45,7 +77,7 @@ export function Cell({ state, regionId, conflict, hinted, size }: CellProps) {
   // the eye without being distracting.
   const pulseAnim = useRef(new Animated.Value(0.35)).current;
   useEffect(() => {
-    if (!hinted) return;
+    if (!highlight) return;
     pulseAnim.setValue(0.35);
     const loop = Animated.loop(
       Animated.sequence([
@@ -55,7 +87,7 @@ export function Cell({ state, regionId, conflict, hinted, size }: CellProps) {
     );
     loop.start();
     return () => loop.stop();
-  }, [hinted]);
+  }, [highlight]);
 
   return (
     <View
@@ -79,12 +111,21 @@ export function Cell({ state, regionId, conflict, hinted, size }: CellProps) {
         )}
         {state === 'x' && <XMark size={size} color="rgba(255,255,255,0.92)" />}
         {isWrong && <XMark size={size} color={colors.danger} />}
-        {hinted && (
+        {showCritter && <CritterPop size={size} />}
+        {highlight && (
           <Animated.View
             pointerEvents="none"
-            style={[styles.hintRing, { borderRadius: radius, opacity: pulseAnim }]}
+            style={[
+              styles.hintRing,
+              {
+                borderRadius: radius,
+                opacity: pulseAnim,
+                borderColor: highlight === 'zombie' ? colors.accentSecondary : colors.accentDark,
+              },
+            ]}
           />
         )}
+        {dimmed && <View pointerEvents="none" style={[styles.dimOverlay, { borderRadius: radius }]} />}
       </View>
     </View>
   );
@@ -112,7 +153,14 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderWidth: 3,
-    borderColor: colors.accentDark,
+  },
+  dimOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(10, 6, 16, 0.72)',
   },
   markWrap: {
     width: '100%',
@@ -122,5 +170,8 @@ const styles = StyleSheet.create({
   },
   zombieEmoji: {
     textAlign: 'center',
+  },
+  critter: {
+    position: 'absolute',
   },
 });

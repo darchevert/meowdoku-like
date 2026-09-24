@@ -16,7 +16,17 @@ interface BoardProps {
   regions: number[][];
   grid: CellState[][];
   conflictKeys: Set<string>;
-  hintCell?: { row: number; col: number } | null;
+  /** Cells the hint overlay has deduced can be marked ✕. */
+  highlightXCells?: Array<{ row: number; col: number }>;
+  /** The one cell the hint overlay has deduced must be the zombie. */
+  highlightZombieCell?: { row: number; col: number } | null;
+  /** True while the hint overlay is open — dims every cell that isn't
+   * part of the current highlight, approximating "the screen goes dark
+   * except what you could have spotted yourself". */
+  dimBoard?: boolean;
+  /** The cell the mouse bonus's bat is currently swooping onto, mid
+   * appear-then-✕ animation. */
+  critterCell?: { row: number; col: number } | null;
   /** Fired once for the cell under the finger when a press starts (also
    * covers a plain tap, which is just a gesture that never moves). */
   onCellGestureStart: (row: number, col: number) => void;
@@ -35,7 +45,10 @@ export function Board({
   regions,
   grid,
   conflictKeys,
-  hintCell,
+  highlightXCells,
+  highlightZombieCell,
+  dimBoard,
+  critterCell,
   onCellGestureStart,
   onCellGestureMove,
   onCellGestureEnd,
@@ -48,6 +61,10 @@ export function Board({
   const boardMax = 320 + size * 14;
   const boardSize = Math.min(width - margin * 2, boardMax);
   const cellSize = useMemo(() => Math.floor(boardSize / size), [boardSize, size]);
+  const xHighlightKeys = useMemo(
+    () => new Set((highlightXCells ?? []).map((p) => `${p.row},${p.col}`)),
+    [highlightXCells]
+  );
 
   const reveal = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -165,13 +182,18 @@ export function Board({
               outputRange: [16, 0],
               extrapolate: 'clamp',
             });
+            const isZombieHighlight = highlightZombieCell?.row === r && highlightZombieCell?.col === c;
+            const isXHighlight = xHighlightKeys.has(`${r},${c}`);
+            const highlight = isZombieHighlight ? 'zombie' : isXHighlight ? 'x' : null;
             return (
               <Animated.View key={c} style={{ opacity, transform: [{ scale }, { translateY }] }}>
                 <Cell
                   state={cellState}
                   regionId={regions[r][c]}
                   conflict={conflictKeys.has(`${r},${c}`)}
-                  hinted={hintCell?.row === r && hintCell?.col === c}
+                  highlight={highlight}
+                  dimmed={!!dimBoard && !highlight}
+                  showCritter={critterCell?.row === r && critterCell?.col === c}
                   size={cellSize}
                 />
               </Animated.View>
