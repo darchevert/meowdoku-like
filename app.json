@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Zombidoku",
-    "slug": "meowdoku-like",
+    "slug": "zombidoku",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
