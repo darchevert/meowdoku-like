@@ -402,9 +402,10 @@ npx eas-cli build --platform android
   compte joueur multi-appareil.
 - Pas de vraies illustrations d'avatars (emojis à la place), pour rester
   dans un scope raisonnable et éviter de reproduire des assets protégés.
-- Le solveur d'indice se contente de révéler une cellule de la solution
-  connue ; un vrai moteur de déduction logique (façon "seule case possible
-  dans cette région") serait une amélioration naturelle.
+- L'indice 💡 (voir §1) ne chaîne qu'un seul niveau de déduction logique
+  (pas de solveur complet) ; sur un board state où rien n'est déductible
+  dans l'immédiat, il retombe encore sur l'ancien comportement (révéler
+  une cellule de la solution) plutôt que de ne rien faire.
 - Sur les très grandes grilles (environ 11×11 et au-delà), la génération
   n'est plus garantie *strictement* unique (voir §3) — c'est un compromis
   assumé pour rester rapide jusqu'à 16×16 plutôt qu'un bug ; le niveau
