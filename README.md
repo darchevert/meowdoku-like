@@ -109,13 +109,20 @@ progression (niveaux, score, série quotidienne, monnaie).
   (haptique, désactivable dans les réglages) et une légère secousse de
   l'écran. À 0 vie, le niveau est raté et propose de réessayer (nouvelle
   grille de la même taille) ou de retourner à l'accueil.
-- **Bruitages** (désactivables via "Sons" dans les réglages) : un bref
-  carillon montant quand un zombie est correctement placé, un double bip
-  grave quand un double-tap est faux, un arpège joyeux à la victoire du
-  niveau, une petite descente triste à 0 vie. Les 4 sons sont synthétisés
-  directement en PCM par `scripts/generate-sounds.mjs` (voir §3) plutôt
-  que des fichiers audio tiers, pour ne rien dépendre d'assets sous
-  licence.
+- **Bruitages** (désactivables via "Sons" dans les réglages) : un thème
+  sonore zombie plutôt que des stingers musicaux neutres — un grognement
+  satisfait quand un zombie est correctement placé, deux grognements
+  agacés ("hnh ! hnh !") quand un double-tap est faux, une petite horde
+  qui pousse un cri de victoire (plusieurs "voix" superposées, décalées et
+  légèrement désaccordées pour sonner comme un groupe plutôt qu'une seule
+  note) à la victoire du niveau, un long gémissement qui s'effondre dans
+  un grondement grave à 0 vie. Les 4 sons sont synthétisés directement en
+  PCM par `scripts/generate-sounds.mjs` (voir §3) — oscillateurs avec
+  vibrato pour le grognement, bruit blanc filtré passe-bas pour le grain
+  granuleux — plutôt que des fichiers audio tiers, pour ne rien dépendre
+  d'assets sous licence (même logique que les animations Lottie
+  générées par script ci-dessus). Ce sont des approximations chiptune
+  d'une voix de zombie, pas des enregistrements réalistes.
 - **Célébration** : un zombie correctement deviné (par double-tap, pas par
   le raccourci 🧟 payant) fait apparaître brièvement "👏 Excellent ! 👏" (ou
   Génial/Incroyable/Bravo/Parfait/Superbe, choisi au hasard) juste
